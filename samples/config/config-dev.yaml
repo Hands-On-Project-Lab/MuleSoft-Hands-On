@@ -1,0 +1,6 @@
+http:
+  port: "8081"
+https:
+  port: "8082"
+api:
+  id: "REPLACE_WITH_DEV_API_ID"

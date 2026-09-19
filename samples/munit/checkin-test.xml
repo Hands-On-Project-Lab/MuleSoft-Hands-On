@@ -1,0 +1,14 @@
+<munit:test name="checkin-happy-path" doc:name="check-in happy path">
+  <munit:behavior>
+    <munit:set-event>
+      <munit:attributes value="#[{uriParams: {PNR: 'ABC123'}}]"/>
+    </munit:set-event>
+  </munit:behavior>
+  <munit:execution>
+    <flow-ref name="put:\tickets\(PNR)\checkin:check-in-papi-config"/>
+  </munit:execution>
+  <munit:validation>
+    <munit-tools:assert-that expression="#[payload.status]" is="#[MunitTools::equalTo('CHECKED_IN')]"/>
+  </munit:validation>
+</munit:test>
+<!-- Extend: mock the Flights Management call with munit-tools:mock-when once you add it. -->

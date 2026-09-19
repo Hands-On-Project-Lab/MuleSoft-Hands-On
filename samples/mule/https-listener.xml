@@ -1,0 +1,12 @@
+<!-- Bind to 0.0.0.0 + reserved property. Never hardcode 8082/localhost. -->
+<tls:context name="TLS_Context">
+  <tls:key-store type="pkcs12"
+                 path="check-in-papi-dev.p12"
+                 alias="server"
+                 keyPassword="${secure::keystore.password}"
+                 password="${secure::keystore.password}"/>
+</tls:context>
+
+<http:listener-config name="HTTPS_Listener_config">
+  <http:listener-connection protocol="HTTPS" host="0.0.0.0" port="${https.port}" tlsContext="TLS_Context"/>
+</http:listener-config>

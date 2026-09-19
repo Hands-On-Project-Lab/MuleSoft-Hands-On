@@ -1,0 +1,1 @@
+<api-gateway:autodiscovery apiId="${api.id}" flowRef="check-in-papi-main" doc:name="API Autodiscovery"/>

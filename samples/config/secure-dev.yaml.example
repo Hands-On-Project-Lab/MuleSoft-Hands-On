@@ -1,0 +1,9 @@
+# Values must be encrypted with the Secure Properties tool: "![encryptedText]"
+keystore:
+  password: "![REPLACE_ENCRYPTED]"
+truststore:
+  password: "![REPLACE_ENCRYPTED]"
+anypoint:
+  platform:
+    client_id: "![REPLACE_ENCRYPTED]"
+    client_secret: "![REPLACE_ENCRYPTED]"

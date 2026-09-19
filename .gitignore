@@ -1,0 +1,12 @@
+*.p12
+*.jks
+*.pem
+*.crt
+client.p12
+secure-*.yaml
+target/
+.mule/
+.DS_Store
+# keep placeholder screenshots out if generated
+.vscode/
+.scripts/

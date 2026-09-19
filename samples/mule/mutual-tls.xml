@@ -1,0 +1,7 @@
+<tls:context name="TLS_Context_Mutual">
+  <tls:trust-store path="truststore.p12" type="pkcs12" password="${secure::truststore.password}"/>
+  <tls:key-store type="pkcs12" path="check-in-papi-dev.p12" alias="server"
+                 keyPassword="${secure::keystore.password}" password="${secure::keystore.password}"/>
+</tls:context>
+<!-- Requiring client certs: the presence of the trust-store on a server-side (listener) TLS context enables client authentication.
+     Verify against your Mule/TLS module version docs. -->

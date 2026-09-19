@@ -1,0 +1,10 @@
+# name,url   (unique file name → saved in images/general/). Leave URL empty to skip; fill in your own.
+general-richardson-maturity-model.png,https://martinfowler.com/articles/images/richardsonMaturityModel/overview.png
+general-anypoint-api-lifecycle.png,
+general-anypoint-platform-overview.png,
+general-cloudhub-network-architecture.png,
+general-tls-handshake.png,
+general-mutual-tls-handshake.png,
+general-keystore-truststore.png,
+general-apikit-router-flow.png,
+general-munit-flow.png

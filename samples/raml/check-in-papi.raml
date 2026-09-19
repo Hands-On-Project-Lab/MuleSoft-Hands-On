@@ -1,0 +1,44 @@
+#%RAML 1.0
+title: Check-In PAPI
+version: v1
+baseUri: https://api.anyairline.com/checkin/{version}
+mediaType: application/json
+
+securitySchemes:
+  client-id-secret:
+    type: Pass Through
+    describedBy:
+      headers:
+        client_id: { type: string }
+        client_secret: { type: string }
+
+types:
+  CheckInResult:
+    properties:
+      pnr: string
+      status: string
+      checkedInAt?: string
+  Error:
+    properties:
+      message: string
+
+/tickets/{PNR}/checkin:
+  uriParameters:
+    PNR:
+      type: string
+      description: Passenger Name Record
+  put:
+    securedBy: [client-id-secret]
+    responses:
+      200:
+        body:
+          type: CheckInResult
+          example: { "pnr": "ABC123", "status": "CHECKED_IN", "checkedInAt": "2026-09-19T10:00:00Z" }
+      404:
+        body:
+          type: Error
+          example: { "message": "PNR not found" }
+      503:
+        body:
+          type: Error
+          example: { "message": "Flights system unavailable" }
