@@ -12,12 +12,32 @@
 | Network isolation | Shared by default; **Anypoint VPC** is a paid add-on | **Private Space** built in | Your own VPC, entirely |
 | TLS termination | Shared LB (MuleSoft cert) or DLB (your cert) | Private Space load-balancing layer | Your choice: cloud LB, Ingress Controller, or the app itself |
 
+```mermaid
+flowchart TB
+  subgraph CH1[CloudHub 1.0]
+    direction LR
+    I1((Internet)) --> SLB[Shared/Dedicated LB] --> W[Worker]
+  end
+  subgraph CH2[CloudHub 2.0]
+    direction LR
+    I2((Internet)) --> PSLB[Private Space LB] --> R[Replica]
+  end
+  subgraph RTFB[Runtime Fabric]
+    direction LR
+    I3((Internet)) --> CLB[Your Cloud LB] --> IC[Ingress Controller] --> P[Pod]
+  end
+```
+
 ## CloudHub 1.0
 
 ```mermaid
 flowchart LR
-  I[Internet] --> LB[Shared LB<br/>MuleSoft wildcard cert] --> W[Worker]
-  I -.custom domain.-> DLB[Dedicated LB<br/>your cert] --> W
+  I[Internet] --> LB[Shared LB<br/>*.cloudhub.io wildcard cert]
+  LB -->|SNI routing| W[Worker: check-in-api]
+  I -.custom domain, optional.-> DLB[Dedicated LB<br/>your CA-signed cert] --> W
+  subgraph VPC[Anypoint VPC - paid add-on, optional]
+    W
+  end
 ```
 
 - Default: public traffic hits `*.cloudhub.io` via the **shared LB**, terminated with MuleSoft's own certificate — you don't manage this hop.
@@ -28,7 +48,13 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  I[Internet] --> PS[Private Space<br/>ingress + static IP] --> R[Replica]
+  I[Internet] --> PSLB[Private Space LB / ingress<br/>your CA-signed cert]
+  subgraph PS[Private Space - built-in isolation]
+    PSLB --> R[Replica: check-in-api]
+    FW[Firewall Rules]
+    SIP[Static IP - in/out]
+  end
+  PS -.VPN / Transit Gateway.-> Corp[Your corporate network]
 ```
 
 - **Private Space** replaces the CH1 VPC add-on — every space gets network isolation, **Firewall Rules**, and optionally a VPN/Transit Gateway back to your network, built in (not a separate paid product).
@@ -38,11 +64,21 @@ flowchart LR
 ## RTF (Runtime Fabric)
 
 ```mermaid
-flowchart LR
-  I[Internet] --> CLB[Cloud LB<br/>e.g. AWS NLB] --> IC[Ingress Controller<br/>e.g. NGINX] --> P[Pod]
+flowchart TB
+  I[Internet] --> CLB[Cloud LB<br/>e.g. AWS NLB, ACM cert]
+  CLB --> IC[Ingress Controller<br/>NGINX, TLS via K8s Secret]
+  subgraph K8s[Kubernetes cluster]
+    IC --> P[Pod: check-in-api]
+    N[Node - VM]
+  end
+  subgraph VPC[Your cloud VPC]
+    K8s
+  end
+  Agent[RTF control-plane agent] -. health + deploy instructions .-> Anypoint[Anypoint Platform]
+  Agent --- K8s
 ```
 
-This is the only target where **you** provision the VPC, the Kubernetes nodes, and the Ingress Controller — Anypoint's control plane only deploys your app onto it.
+This is the only target where **you** provision the VPC, the Kubernetes nodes, and the Ingress Controller. The only MuleSoft-managed piece is the small **control-plane agent** on your cluster that reports health and receives deployment instructions from Anypoint.
 
 **TLS termination — your choice:**
 - At the **cloud LB** (e.g. AWS NLB + ACM cert) — internal traffic to the Ingress Controller can stay plain HTTP inside your VPC.

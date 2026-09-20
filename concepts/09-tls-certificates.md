@@ -21,6 +21,14 @@
 | **Keystore** | Your identity: private key + your certificate | Proving *who you are* |
 | **Truststore** | CA / partner certificates you accept | Deciding *who you trust* |
 
+```mermaid
+flowchart LR
+  KS[Keystore<br/>private key + own cert] -- presents cert --> TS[Truststore<br/>list of trusted CAs]
+  TS --> Q{Signed by<br/>trusted CA?}
+  Q -- No, self-signed --> F[TLS error]
+  Q -- Yes --> P[Handshake continues]
+```
+
 ## One-way TLS
 
 ```mermaid
@@ -84,9 +92,11 @@ sequenceDiagram
   S-->>C: Server Hello + certificate (public key, CN, SAN)
   C->>C: Check cert against trusted CA list
   Note over C: self-signed cert → not trusted → fails here (unless -k)
-  C->>S: session key (encrypted with server's public key)
-  C-->>S: encrypted application data
+  C->>S: key exchange (asymmetric crypto agrees a one-time symmetric key)
+  C-->>S: encrypted application data (fast symmetric key)
 ```
+
+Why the handoff: asymmetric crypto (RSA) lets two strangers agree a secret safely, but it's too slow for a whole conversation; symmetric crypto (AES) is fast but needs a shared key first. TLS uses asymmetric crypto **once**, only to hand over a one-time symmetric session key — like a locked box used once to pass a house key in public.
 
 Fine for solo local dev against `localhost`. **Never acceptable in production** — it means your client (or Mule acting as a client) will accept any impostor's certificate, defeating the point of TLS entirely.
 
