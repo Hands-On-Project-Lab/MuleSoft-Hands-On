@@ -39,6 +39,7 @@ Every later step *reuses* the contract: APIkit scaffolds from it, MUnit asserts 
 | 13 | [07 Networking on CloudHub](07-networking-cloudhub.md) | 20–22, 25 | [Lab 08](../labs/lab-08-network-tls-checks.md) |
 | 14 | [08 VPC, On-Prem, Deployment Targets](08-vpc-onprem-targets.md) | 23, 24, 27 | Lab 08 |
 | 15 | [15 Deploy & Operate](15-deploy-operate.md) *(added)* | 35 step 5 | [Lab 07](../labs/lab-07-deploy-cloudhub.md), [Lab 09](../labs/lab-09-mutual-tls.md) |
+| 16 | [16 CloudHub 1.0 vs 2.0 vs RTF](16-cloudhub-rtf-deployment-targets.md) *(added)* | – | [Lab 10](../labs/lab-10-cloudhub1-custom-domain.md), [Lab 11](../labs/lab-11-cloudhub2-private-space.md), [Lab 12](../labs/lab-12-rtf-ingress-tls.md) |
 
 > Why TLS comes before autodiscovery: the walkthrough (slide 35) builds HTTPS *before* registering with API Manager, and autodiscovery needs the secured app to start cleanly.
 
@@ -53,6 +54,7 @@ Every later step *reuses* the contract: APIkit scaffolds from it, MUnit asserts 
 | MUnit (deck says scope = Develop + Test but never covers it) | 14 |
 | Client ID enforcement (deck mentions it in one line) | 05 |
 | Runtime Manager deploy, logs, CI/CD, monitoring | 15 |
+| CloudHub 1.0 vs 2.0 vs RTF networking/TLS differences | 16 |
 
 ## Accuracy notes on the deck (check against your versions)
 

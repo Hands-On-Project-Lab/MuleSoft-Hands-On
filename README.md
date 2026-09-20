@@ -33,6 +33,9 @@ flowchart LR
 | ☐ | [Lab 07 Deploy to CloudHub](labs/lab-07-deploy-cloudhub.md) | [15](concepts/15-deploy-operate.md), [07](concepts/07-networking-cloudhub.md) | Deploy, verify policies, analytics |
 | ☐ | [Lab 08 Network & TLS inspection](labs/lab-08-network-tls-checks.md) | [07](concepts/07-networking-cloudhub.md), [08](concepts/08-vpc-onprem-targets.md) | nslookup, openssl, plan VPC |
 | ☐ | [Lab 09 Mutual TLS](labs/lab-09-mutual-tls.md) | [09](concepts/09-tls-certificates.md) | Require client certificate |
+| ☐ | [Lab 10 CloudHub 1.0 custom domain](labs/lab-10-cloudhub1-custom-domain.md) | [16](concepts/16-cloudhub-rtf-deployment-targets.md) | CA-signed cert, DLB/Certificates upload, CNAME |
+| ☐ | [Lab 11 CloudHub 2.0 Private Space](labs/lab-11-cloudhub2-private-space.md) | [16](concepts/16-cloudhub-rtf-deployment-targets.md) | Private Space, firewall rules, static IP |
+| ☐ | [Lab 12 RTF Ingress + TLS](labs/lab-12-rtf-ingress-tls.md) | [16](concepts/16-cloudhub-rtf-deployment-targets.md) | Kubernetes Secret, Ingress resource, TLS termination choice |
 
 ## 📚 Concept index
 
@@ -54,6 +57,7 @@ flowchart LR
 | 13 | [Properties & secrets](concepts/13-properties-secrets.md) |
 | 14 | [MUnit testing](concepts/14-munit-testing.md) |
 | 15 | [Deploy & operate](concepts/15-deploy-operate.md) |
+| 16 | [CloudHub 1.0 vs 2.0 vs RTF](concepts/16-cloudhub-rtf-deployment-targets.md) |
 
 ## 🗂 Structure
 

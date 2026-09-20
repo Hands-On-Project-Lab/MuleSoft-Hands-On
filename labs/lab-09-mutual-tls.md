@@ -33,4 +33,4 @@ curl -k --cert client.pem -i https://localhost:8082/api/tickets/ABC123/checkin -
 ## ✅ Verify
 No cert → handshake failure; with cert → 200.
 
-🎉 **Course complete.** Review the checklist in the [README](../README.md).
+**Next →** [Lab 10](lab-10-cloudhub1-custom-domain.md)

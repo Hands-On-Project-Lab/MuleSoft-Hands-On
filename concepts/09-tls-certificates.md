@@ -72,4 +72,44 @@ Clients validate only hop 1, so a self-signed cert on the worker is acceptable. 
 
 One global `tls:context`, referenced by HTTP listeners **and** requesters. Sets protocols, ciphers, and whether client auth is required. Keystore mandatory for server identity; truststore only for mutual TLS. Ship both as **secured resources**, and keep passwords in secure properties.
 
-**Do it →** [Lab 04](../labs/lab-04-keystore-https.md) and [Lab 09](../labs/lab-09-mutual-tls.md) · **← Back** [08](08-vpc-onprem-targets.md)
+## Why `curl -k` "fixes" the untrusted-cert error
+
+TLS does two separate jobs: **encryption** (nobody on the wire can read the traffic) and **authentication** (the client proves it's really talking to the real server, not a man-in-the-middle). `-k`/`--insecure` skips only the authentication check — it still encrypts, but no longer verifies who's on the other end.
+
+```mermaid
+sequenceDiagram
+  participant C as curl client
+  participant S as Mule HTTPS listener
+  C->>S: Client Hello
+  S-->>C: Server Hello + certificate (public key, CN, SAN)
+  C->>C: Check cert against trusted CA list
+  Note over C: self-signed cert → not trusted → fails here (unless -k)
+  C->>S: session key (encrypted with server's public key)
+  C-->>S: encrypted application data
+```
+
+Fine for solo local dev against `localhost`. **Never acceptable in production** — it means your client (or Mule acting as a client) will accept any impostor's certificate, defeating the point of TLS entirely.
+
+## keytool flags, decoded (`Lab 04` command)
+
+```bash
+keytool -v -genkeypair -keyalg RSA \
+  -dname "CN=localhost, OU=Training, O=MuleSoft, C=US" \
+  -ext "SAN=DNS:localhost,IP:127.0.0.1" \
+  -validity 365 -alias server \
+  -keystore check-in-papi-dev.p12 -storetype pkcs12 \
+  -storepass "<choose-a-password>"
+```
+
+| Flag | Meaning |
+|---|---|
+| `-genkeypair` | Generates a new key pair **and** wraps the public key in a self-signed certificate |
+| `-keyalg RSA` | Asymmetric algorithm used for the key pair |
+| `-dname "CN=..."` | Identity claim; `CN` is the classic field but modern clients (curl included) actually validate **SAN**, not CN |
+| `-ext "SAN=DNS:localhost,IP:127.0.0.1"` | The list of hostnames/IPs this cert is valid for — this is the field curl checks |
+| `-validity 365` | Days until expiry; after that, verification fails again for a different reason (expired, not untrusted) |
+| `-alias server` | Name of this key entry inside the keystore file; one `.p12` can hold multiple aliases |
+| `-storetype pkcs12` | Container format — modern cross-platform standard (older `JKS` is Java-proprietary, still seen in legacy setups) |
+| `-storepass` | Password protecting the keystore file — externalize via secure properties, never hardcode in XML/source control |
+
+**Next →** [16 CloudHub 1.0 vs 2.0 vs RTF](16-cloudhub-rtf-deployment-targets.md) for how TLS termination changes per deployment target · **Do it →** [Lab 04](../labs/lab-04-keystore-https.md) and [Lab 09](../labs/lab-09-mutual-tls.md) · **← Back** [08](08-vpc-onprem-targets.md)
