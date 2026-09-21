@@ -1,60 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Reference pom.xml for check-in-papi (Mule 4 application).
-  Every block below is commented with WHERE it is used and WHY, specific to this
-  course's stack: HTTP Listener (public API), Web Service Consumer -> Flights
-  Management (on-prem SOAP, mutual TLS), Database connector -> Passenger Data
-  (on-prem PostgreSQL), APIkit, Secure Properties, Autodiscovery, MUnit.
-  This is a reference/teaching file - copy the sections you need into your
-  project's real pom.xml, don't run this file standalone.
+  ============================================================================
+  pom.xml - check-in-papi (Mule 4 Process API)  -  COMPLETE, FULLY ANNOTATED
+  ============================================================================
+  Stack this file is built for:
+    - HTTP Listener            -> public inbound API (HTTPS)
+    - APIkit                   -> RAML-driven routing + request validation
+    - Web Service Consumer     -> Flights Management (on-prem SOAP, mutual TLS)
+    - Database connector       -> Passenger Data (on-prem PostgreSQL)
+    - Secure Properties        -> encrypted credentials/keystore passwords
+    - Object Store             -> idempotency / token caching (optional)
+    - MUnit                    -> unit tests + 80% coverage gate
+    - CloudHub 1.0 deployment  -> via mule-maven-plugin, per-environment profiles
+
+  Build / deploy commands:
+    mvn clean package                              -> build the mule-application zip
+    mvn clean verify                               -> build + run MUnit + coverage gate
+    mvn clean deploy -DmuleDeploy -Pdev            -> deploy to DEV
+    mvn clean deploy -DmuleDeploy -Pprod           -> deploy to PROD
+    mvn clean deploy -DmuleDeploy -Denv=qa         -> override env name directly
+
+  Required OS environment variables (never commit them):
+    ANYPOINT_USERNAME, ANYPOINT_PASSWORD  (or the Connected App pair, see Section 9)
+    MULE_KEY                               (Secure Properties encryption key)
+
+  Naming reminder:  ${env.XYZ} (with dot) = OS environment variable XYZ
+                    ${env}     (no dot)   = Maven property, set by -Denv or a profile
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-  <!-- Always 4.0.0 - the POM schema version, not your app's version. -->
+  <!-- ==========================================================================
+       SECTION 1 - PROJECT IDENTITY
+       ========================================================================== -->
+
+  <!-- Always 4.0.0. This is the POM schema version, NOT your application version. -->
   <modelVersion>4.0.0</modelVersion>
 
-  <!--
-    GAV coordinates - the project's unique address, and how ~/.m2 lays out its
-    cache folder: ~/.m2/repository/com/anyairline/check-in-papi/1.0.0-SNAPSHOT/
-  -->
+  <!-- GAV coordinates = the project's unique address. Also decide the local cache
+       path: ~/.m2/repository/com/anyairline/check-in-papi/1.0.0-SNAPSHOT/ -->
   <groupId>com.anyairline</groupId>
   <artifactId>check-in-papi</artifactId>
+
+  <!-- -SNAPSHOT = work in progress, can be overwritten in a repository.
+       Drop the suffix for a real release (1.0.0) so the artifact is immutable. -->
   <version>1.0.0-SNAPSHOT</version>
 
-  <!--
-    packaging = mule-application (NOT jar). This tells mule-maven-plugin to
-    produce the CloudHub/RTF-deployable artifact layout (src/main/mule flows +
-    src/main/resources properties bundled together), not a plain library jar.
-  -->
+  <!-- mule-application (NOT jar). Tells mule-maven-plugin to produce the deployable
+       layout: src/main/mule flows + src/main/resources properties bundled into a
+       zip that CloudHub / Runtime Fabric / on-prem runtimes accept. -->
   <packaging>mule-application</packaging>
 
   <name>Check-In PAPI</name>
   <description>Process API: check-in a passenger by PNR, fronting Flights Management (SOAP) and Passenger Data (PostgreSQL)</description>
 
-  <!--
-    Properties = build-time variables. Bump a connector/runtime version once
-    here instead of hunting through every <dependency>/<plugin> block.
-  -->
+
+  <!-- ==========================================================================
+       SECTION 2 - PROPERTIES (build-time variables)
+       Change a version ONCE here rather than hunting through every dependency.
+       ========================================================================== -->
   <properties>
+
+    <!-- Source files are read as UTF-8 regardless of the machine's default charset.
+         Avoids garbled characters in DataWeave scripts / YAML on Windows builds. -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <app.runtime>4.6.0</app.runtime>                 <!-- Mule runtime version - must match Anypoint Studio -->
+
+    <!--  Runtime + tooling versions  -->
+    <!-- Mule runtime version. Must match Anypoint Studio's runtime AND the
+         <muleVersion> in the CloudHub block, or you deploy on a runtime you never tested. -->
+
+    <app.runtime>4.6.0</app.runtime>
     <mule.maven.plugin.version>4.1.0</mule.maven.plugin.version>
+
+    <!--  MUnit  -->
     <munit.version>3.3.4</munit.version>
     <munit.extensions.maven.plugin.version>1.1.0</munit.extensions.maven.plugin.version>
+    <munit.coverage.required>80</munit.coverage.required>  <!-- build fails below this % -->
+
+    <!-- Connectors / modules  -->
     <http.connector.version>1.9.0</http.connector.version>
     <ws.connector.version>1.4.0</ws.connector.version>
     <db.connector.version>1.14.0</db.connector.version>
     <apikit.version>1.11.3</apikit.version>
     <secure-properties.connector.version>1.2.5</secure-properties.connector.version>
+    <objectstore.connector.version>1.2.2</objectstore.connector.version>
+
+    <!--  Non-Mule libraries -->
     <postgresql.driver.version>42.7.3</postgresql.driver.version>
+
+    <!--  Deployment defaults (overridden by profiles in Section 8)
+         Defaults exist so `mvn deploy` never runs with an empty value. -->
+    <env>dev</env>                            <!-- Anypoint environment name + app name suffix -->
+    <ch.workers>1</ch.workers>                <!-- number of CloudHub workers -->
+    <ch.worker.type>Micro</ch.worker.type>    <!-- worker size (vCore) -->
+    <ch.region>us-east-1</ch.region>          <!-- CloudHub region code; keep near your backends -->
   </properties>
 
+
+  <!-- ==========================================================================
+       SECTION 3 - DEPENDENCIES
+       Every Mule connector is a Maven dependency with <classifier>mule-plugin</classifier>.
+       That classifier is what makes the runtime load it as an isolated plugin
+       (its own classloader) rather than a plain jar on the app classpath.
+       ========================================================================== -->
   <dependencies>
 
-    <!-- HTTP Listener + HTTP Requester config (see samples/mule/https-listener.xml).
-         Public inbound endpoint AND used for any plain-HTTP outbound calls. -->
+    <!-- HTTP connector: HTTP Listener (public inbound endpoint) AND HTTP Requester
+         for any outbound plain-HTTP calls. -->
     <dependency>
       <groupId>org.mule.connectors</groupId>
       <artifactId>mule-http-connector</artifactId>
@@ -62,8 +115,8 @@
       <classifier>mule-plugin</classifier>
     </dependency>
 
-    <!-- APIkit - scaffolds flows from the RAML contract (samples/raml/check-in-papi.raml)
-         and does request validation before your flow logic runs. -->
+    <!-- APIkit: generates flows from the RAML contract and validates every request
+         (headers, query params, body) BEFORE your flow logic runs. -->
     <dependency>
       <groupId>org.mule.modules</groupId>
       <artifactId>mule-apikit-module</artifactId>
@@ -71,16 +124,16 @@
       <classifier>mule-plugin</classifier>
     </dependency>
 
-    <!-- Web Service Consumer - calls Flights Management (on-prem SOAP, mutual TLS).
-         Pairs with the mutual-tls tls:context in samples/mule/mutual-tls.xml. -->
+    <!-- Web Service Consumer: calls Flights Management (on-prem SOAP, mutual TLS).
+         Pair it with a tls:context (keystore + truststore) on the connection. -->
     <dependency>
       <groupId>org.mule.connectors</groupId>
-      <artifactId>mule-ws-connector</artifactId>
+      <artifactId>mule-wsc-connector</artifactId>
       <version>${ws.connector.version}</version>
       <classifier>mule-plugin</classifier>
     </dependency>
 
-    <!-- Database connector - talks to Passenger Data (on-prem PostgreSQL). -->
+    <!-- Database connector: talks to Passenger Data (on-prem PostgreSQL). -->
     <dependency>
       <groupId>org.mule.connectors</groupId>
       <artifactId>mule-db-connector</artifactId>
@@ -88,17 +141,18 @@
       <classifier>mule-plugin</classifier>
     </dependency>
 
-    <!-- Plain JDBC driver required by the DB connector above to actually speak
-         Postgres's wire protocol - the connector alone isn't enough. -->
+    <!-- JDBC driver. The DB connector defines HOW to run queries; this driver speaks
+         Postgres's wire protocol. Without it: "No suitable driver" at startup.
+         NOTE: plain jar, so NO mule-plugin classifier. In Studio you also add it
+         to the Database Config as a shared library / dependency reference. -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql.driver.version}</version>
     </dependency>
 
-    <!-- Secure Properties module - decrypts secure-${mule.env}.yaml values
-         (keystore/truststore passwords, DB credentials) at runtime.
-         See concepts/13-properties-secrets.md. -->
+    <!-- Secure Properties: decrypts secure-${mule.env}.yaml values
+         (keystore/truststore passwords, DB credentials) at runtime using MULE_KEY. -->
     <dependency>
       <groupId>com.mulesoft.modules</groupId>
       <artifactId>mule-secure-configuration-property-extension</artifactId>
@@ -106,9 +160,18 @@
       <classifier>mule-plugin</classifier>
     </dependency>
 
-    <!-- MUnit runner + tools - test scope only, never shipped in the deployed
-         artifact. munit-tools adds mock-when / assert-that used in
-         samples/munit/checkin-test.xml. -->
+    <!-- Object Store connector: needed when flows store/read keys (for example an
+         idempotent check-in guard or cached token). Pairs with <objectStoreV2>
+         in the CloudHub block. Remove if you don't use it. -->
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-objectstore-connector</artifactId>
+      <version>${objectstore.connector.version}</version>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+
+    <!-- MUnit runner + tools: test scope only, NEVER shipped in the deployed artifact.
+         munit-tools adds mock-when, assert-that, verify-call, spy, etc. -->
     <dependency>
       <groupId>com.mulesoft.munit</groupId>
       <artifactId>munit-runner</artifactId>
@@ -126,29 +189,130 @@
 
   </dependencies>
 
+
+  <!-- ==========================================================================
+       SECTION 4 - BUILD PLUGINS
+       ========================================================================== -->
   <build>
     <plugins>
 
-      <!--
-        mule-maven-plugin - THE Mule-specific plugin. <extensions>true</extensions>
-        lets it hook into the package/deploy phases so `mvn package` produces the
-        mule-application artifact and `mvn deploy -DmuleDeploy` pushes it to
-        CloudHub (see samples/maven/pom-cloudhub-deploy-snippet.xml for the full
-        cloudHubDeployment block, and concepts/18-maven-build.md).
-      -->
+      <!-- 
+           ======================================================================
+           4a. mule-maven-plugin - THE Mule-specific plugin. It packages the
+           application AND deploys it. The deployment target is configured below.
+           ======================================================================
+            -->
       <plugin>
         <groupId>org.mule.tools.maven</groupId>
         <artifactId>mule-maven-plugin</artifactId>
         <version>${mule.maven.plugin.version}</version>
+
+        <!-- REQUIRED. Registers the mule-application packaging type and hooks into
+             the lifecycle. Without it Maven fails with "unknown packaging". -->
         <extensions>true</extensions>
+
+        <configuration>
+
+          <!-- Max wait for the deployment, in MILLISECONDS. A cold CloudHub worker
+               can take several minutes to boot. 600000 = 10 minutes. -->
+          <deploymentTimeout>600000</deploymentTimeout>
+
+          <!-- false = the plugin polls until the app reaches STARTED, so CI goes red
+               if the app crashes on start (bad property, unreachable DB, wrong
+               mule.key). true would let a broken app count as a passing build. -->
+          <skipDeploymentVerification>false</skipDeploymentVerification>
+
+          <!-- Deployment target. Element name selects the platform. Alternatives:
+               runtimeFabricDeployment, cloudhub2Deployment, armDeployment.
+               Use only ONE per configuration. -->
+          <cloudHubDeployment>
+
+            <!-- Anypoint control plane. US = anypoint.mulesoft.com,
+                 EU = eu1.anypoint.mulesoft.com. Wrong plane = "not found" errors. -->
+            <uri>https://anypoint.mulesoft.com</uri>
+
+            <!-- Runtime CloudHub provisions. Explicit, so DEV/QA/PROD all run the
+                 exact runtime you built and tested on. -->
+            <muleVersion>${app.runtime}</muleVersion>
+
+            <!-- Authentication, method A: username + password from OS env vars.
+                 Simple, but tied to a person (breaks on password change / MFA /
+                 when they leave). See Section 9 for the Connected App alternative. -->
+            <username>${env.ANYPOINT_USERNAME}</username>
+            <password>${env.ANYPOINT_PASSWORD}</password>
+
+            <!-- Anypoint environment NAME; case-sensitive, must match Runtime
+                 Manager exactly. Because we reuse ${env}, your Anypoint environments
+                 need to be named dev / qa / prod (or adjust in profiles). -->
+            <environment>${env}</environment>
+
+            <!-- Business Group ID; only if the app lives in a sub-group rather than
+                 the root org. Prefer the ID (stable) over the name (renameable).
+                 Uncomment and export ANYPOINT_BG_ID if you need it. -->
+            <!-- <businessGroupId>${env.ANYPOINT_BG_ID}</businessGroupId> -->
+
+            <!-- App name = the CloudHub domain:
+                 check-in-papi-dev.<region>.cloudhub.io. Must be GLOBALLY unique across
+                 all of CloudHub. The env suffix stops DEV/QA/PROD overwriting each
+                 other. Lowercase letters, digits and hyphens only. -->
+            <applicationName>check-in-papi-${env}</applicationName>
+
+            <!-- Data-centre region. Match it to your VPC and your on-prem backends. -->
+            <region>${ch.region}</region>
+
+            <!-- Worker count. 1 = single point of failure and no zero-downtime
+                 redeploy. Use 2+ in PROD. Billing = vCores x workers. -->
+            <workers>${ch.workers}</workers>
+
+            <!-- Worker size: Micro 0.1 vCore, Small 0.2, Medium 1, Large 2, xLarge 4.
+                 Memory is the first limit you hit with APIkit + DataWeave + a TLS
+                 handshake, so size PROD at Small or Medium and up. -->
+            <workerType>${ch.worker.type}</workerType>
+
+            <!-- Object Store v2 (persistent key-value store). Needed only if flows
+                 use the Object Store connector (dependency in Section 3). -->
+            <objectStoreV2>true</objectStoreV2>
+
+            <!-- Persistent queues keep VM-queue messages in Amazon SQS so a worker
+                 restart doesn't lose them. Costs extra + adds latency. Enable only
+                 if you use VM queues and cannot lose messages. -->
+            <persistentQueues>false</persistentQueues>
+            <persistentQueuesEncrypted>false</persistentQueuesEncrypted>
+
+            <!-- Ship metrics/logs to Anypoint Monitoring (license tier dependent). -->
+            <monitoringEnabled>true</monitoringEnabled>
+
+            <!-- NETWORK NOTE: on-prem SOAP (mutual TLS) and PostgreSQL are NOT
+                 reachable from public CloudHub. You need an Anypoint VPC with a
+                 VPN / Direct Connect to your data centre, the worker deployed INTO
+                 that VPC, and firewall rules for the VPC CIDR on the SOAP port and
+                 5432. Configure the VPC in Anypoint; it is not fully a plugin flag. -->
+
+            <!-- PLAIN properties: readable by anyone with Runtime Manager access.
+                 NON-secret values only. mule.env selects config-${mule.env}.yaml
+                 and secure-${mule.env}.yaml in your configuration-properties. -->
+            <properties>
+              <mule.env>${env}</mule.env>
+            </properties>
+
+            <!-- SECURED properties: masked in Runtime Manager UI and API. The
+                 Secure Properties key MUST live here, never in <properties>,
+                 otherwise the encryption is pointless. -->
+            <securedProperties>
+              <mule.key>${env.MULE_KEY}</mule.key>
+            </securedProperties>
+
+          </cloudHubDeployment>
+        </configuration>
       </plugin>
 
-      <!--
-        munit-maven-plugin - binds MUnit tests to `mvn test`/`mvn verify` and can
-        enforce a minimum coverage percentage, failing the build below it.
-        This is what makes `mvn clean verify` in concepts/15-deploy-operate.md's
-        CI/CD sketch actually run and gate on MUnit, not just compile.
-      -->
+      <!-- 
+            ========================================================================
+           4b. munit-maven-plugin - binds MUnit to `mvn test` / `mvn verify` and
+           gates the build on coverage. This is what makes `mvn clean verify` in CI
+           actually run your tests instead of only compiling.
+           =========================================================================
+           -->
       <plugin>
         <groupId>com.mulesoft.munit.tools</groupId>
         <artifactId>munit-maven-plugin</artifactId>
@@ -156,18 +320,18 @@
         <executions>
           <execution>
             <id>test</id>
-            <phase>test</phase>
+            <phase>test</phase>            <!-- runs in the standard test phase -->
             <goals>
-              <goal>test</goal>
-              <goal>coverage-report</goal>
+              <goal>test</goal>            <!-- execute the MUnit suites -->
+              <goal>coverage-report</goal> <!-- compute + write coverage report -->
             </goals>
           </execution>
         </executions>
         <configuration>
           <coverage>
             <runCoverage>true</runCoverage>
-            <failBuild>true</failBuild>
-            <requiredApplicationCoverage>80</requiredApplicationCoverage>
+            <failBuild>true</failBuild>    <!-- red build if coverage is too low -->
+            <requiredApplicationCoverage>${munit.coverage.required}</requiredApplicationCoverage>
           </coverage>
         </configuration>
       </plugin>
@@ -175,12 +339,12 @@
     </plugins>
   </build>
 
-  <!--
-    MuleSoft's own repositories - connectors (mule-http-connector, mule-db-connector,
-    mule-ws-connector, etc.) and the mule-maven-plugin itself are NOT on plain
-    Maven Central; they live here. Without these, dependency resolution falls
-    through to Central, finds nothing, and the build fails.
-  -->
+
+  <!-- ==========================================================================
+       SECTION 5 - DEPENDENCY REPOSITORIES
+       MuleSoft connectors are NOT on Maven Central. Without this, resolution
+       falls through to Central, finds nothing, and the build fails.
+       ========================================================================== -->
   <repositories>
     <repository>
       <id>mulesoft-releases</id>
@@ -188,8 +352,25 @@
       <url>https://repository.mulesoft.org/releases/</url>
       <layout>default</layout>
     </repository>
+
+    <!-- Only if you consume shared assets from Anypoint Exchange (private RAML
+         fragments, shared libraries). Replace ORG_ID with your organization ID and
+         add credentials in ~/.m2/settings.xml under a server with the SAME id.
+    <repository>
+      <id>anypoint-exchange-v3</id>
+      <name>Anypoint Exchange</name>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+      <layout>default</layout>
+    </repository>
+    -->
   </repositories>
 
+
+  <!-- ==========================================================================
+       SECTION 6 - PLUGIN REPOSITORIES
+       Maven resolves PLUGINS (mule-maven-plugin, munit-maven-plugin) from a
+       separate list than dependencies. Both lists need the MuleSoft repo.
+       ========================================================================== -->
   <pluginRepositories>
     <pluginRepository>
       <id>mulesoft-releases</id>
@@ -198,5 +379,95 @@
       <layout>default</layout>
     </pluginRepository>
   </pluginRepositories>
+
+
+  <!-- ==========================================================================
+       SECTION 7 - DISTRIBUTION MANAGEMENT (optional: publish to Exchange)
+       Needed only if you run `mvn deploy` WITHOUT -DmuleDeploy to publish the
+       artifact to Anypoint Exchange for reuse. Uncomment and set ORG_ID.
+       ========================================================================== -->
+
+  <distributionManagement>
+    <repository>
+      <id>anypoint-exchange-v3</id>
+      <name>Exchange Repository</name>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/organizations/ORG_ID/maven</url>
+      <layout>default</layout>
+    </repository>
+  </distributionManagement>
+
+
+  <!-- ==========================================================================
+       SECTION 8 - PROFILES (per-environment overrides)
+       Select with -P<id>. A profile's properties override Section 2 defaults,
+       so the plugin block never needs editing per environment.
+       ========================================================================== -->
+  <profiles>
+
+    <!-- DEV: cheapest possible. Active by default. -->
+    <profile>
+      <id>dev</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <env>dev</env>
+        <ch.workers>1</ch.workers>
+        <ch.worker.type>Micro</ch.worker.type>
+      </properties>
+    </profile>
+
+    <!-- QA: closer to prod sizing so load / timing tests mean something. -->
+    <profile>
+      <id>qa</id>
+      <properties>
+        <env>qa</env>
+        <ch.workers>1</ch.workers>
+        <ch.worker.type>Small</ch.worker.type>
+      </properties>
+    </profile>
+
+    <!-- PROD: 2 workers for HA + rolling redeploys; Medium (1 vCore) for headroom. -->
+    <profile>
+      <id>prod</id>
+      <properties>
+        <env>prod</env>
+        <ch.workers>2</ch.workers>
+        <ch.worker.type>Medium</ch.worker.type>
+      </properties>
+    </profile>
+
+  </profiles>
+
+  <!-- ==========================================================================
+       SECTION 9 - CHEAT SHEET
+       ============================================================================
+       Connected App auth (recommended for CI/CD) - in the cloudHubDeployment block,
+       replace <username>/<password> with:
+         <connectedAppClientId>${env.ANYPOINT_CLIENT_ID}</connectedAppClientId>
+         <connectedAppClientSecret>${env.ANYPOINT_CLIENT_SECRET}</connectedAppClientSecret>
+         <connectedAppGrantType>client_credentials</connectedAppGrantType>
+       Create it in Access Management > Connected Apps with the "Deploy Applications"
+       scope for the target environment. Not tied to a person, no MFA problems.
+
+       Common failures:
+         "Application name is already in use" -> applicationName not globally unique.
+         "Environment not found"              -> <environment> differs from Anypoint's
+                                                 name, or wrong <uri> / business group.
+         401 Unauthorized                     -> bad creds, MFA on the user, or the
+                                                 Connected App lacks Deploy scope.
+         Build passes, app FAILED             -> wrong MULE_KEY (secure yaml can't
+                                                 decrypt) or missing property; read the
+                                                 Runtime Manager logs.
+         Deploy OK, on-prem calls time out    -> no VPC/VPN, or firewall blocks it.
+         Plugin/connector "not found"         -> MuleSoft repo missing from Sections
+                                                 5 and 6.
+         Coverage build failure               -> below munit.coverage.required; add
+                                                 tests or lower the threshold.
+
+       Version caution: connector artifact IDs and CloudHub element names change
+       between plugin versions. Verify them against the MuleSoft docs and Anypoint
+       Studio's generated pom before your first real build.
+       ========================================================================== -->
 
 </project>

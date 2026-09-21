@@ -18,3 +18,239 @@
     </cloudHubDeployment>
   </configuration>
 </plugin>
+
+<!--
+  ============================================================================
+  pom-cloudhub-deploy-snippet.xml  (enhanced, fully annotated)
+  ============================================================================
+  WHAT:   mule-maven-plugin config that PACKAGES check-in-papi and DEPLOYS it to
+          CloudHub 1.0 (classic CloudHub, not CloudHub 2.0 / Runtime Fabric).
+  WHERE:  Replaces the bare <plugin> block for mule-maven-plugin inside
+          <build><plugins> of the reference pom.xml. Do NOT add a second
+          mule-maven-plugin entry - Maven merges duplicates badly. Edit the one.
+  HOW:    mvn clean deploy -DmuleDeploy -Denv=dev
+            clean          -> wipes target/
+            deploy         -> runs package (builds mule-application zip) and then the
+                              plugin's deploy goal
+            -DmuleDeploy   -> the switch that tells the plugin to actually push
+                              (without it, `deploy` only installs to the repo)
+            -Denv=dev      -> fills ${env} below (a Maven USER property)
+  NOTE:   ${env.XYZ} (with a dot) = OS environment variable XYZ.
+          ${env}        (no dot)  = the -Denv=... property. Two different things
+          that look alike - the original snippet used both, correctly.
+-->
+
+<!-- ======================================================================
+     SECTION 1 - PROPERTIES (put in the pom's <properties> block)
+     Keeps deployment values in one place, same style as the reference pom.
+     ====================================================================== -->
+<properties>
+  <!-- Reused from the reference pom. Must equal the runtime version in Studio
+       AND the <muleVersion> below, otherwise CloudHub starts a different runtime
+       than the one you tested on. -->
+  <app.runtime>4.6.0</app.runtime>
+  <mule.maven.plugin.version>4.1.0</mule.maven.plugin.version>
+
+  <!-- Defaults so `mvn deploy` never runs with an empty value. Override on the CLI
+       or in a profile (Section 3). -->
+  <env>dev</env>
+  <ch.workers>1</ch.workers>
+  <ch.worker.type>Micro</ch.worker.type>
+  <ch.region>us-east-1</ch.region>
+</properties>
+
+
+<!-- ======================================================================
+     SECTION 2 - THE PLUGIN BLOCK
+     ====================================================================== -->
+<plugin>
+  <groupId>org.mule.tools.maven</groupId>
+  <artifactId>mule-maven-plugin</artifactId>
+
+  <!-- FIX: original had REPLACE_WITH_PLUGIN_VERSION (a placeholder that breaks the
+       build). Point at the property so the version lives in ONE place. -->
+  <version>${mule.maven.plugin.version}</version>
+
+  <!-- REQUIRED. Lets the plugin register the `mule-application` packaging type
+       and hook into the lifecycle. Without it, `packaging = mule-application`
+       in the pom is an unknown type and Maven fails at project load. -->
+  <extensions>true</extensions>
+
+  <configuration>
+
+    <!-- Fail fast if the deploy hangs. Value is in MILLISECONDS. Default is short;
+         a cold CloudHub worker boot can take several minutes. 600000 = 10 min. -->
+    <deploymentTimeout>600000</deploymentTimeout>
+
+    <!-- false = plugin polls CloudHub until status = STARTED, so CI goes RED if the
+         app crashes on start (bad property, unreachable DB, etc). Setting true
+         makes the build "pass" even if the app never comes up. Keep false. -->
+    <skipDeploymentVerification>false</skipDeploymentVerification>
+
+    <!-- The deployment target. Element name = the platform. Other options in the
+         same slot: <runtimeFabricDeployment>, <cloudhub2Deployment>,
+         <armDeployment>. Only ONE deployment element per configuration. -->
+    <cloudHubDeployment>
+
+      <!-- Anypoint control plane URL. US cloud = https://anypoint.mulesoft.com.
+           EU control plane = https://eu1.anypoint.mulesoft.com.
+           Wrong control plane = "org/environment not found" on deploy. -->
+      <uri>https://anypoint.mulesoft.com</uri>
+
+      <!-- ADDED. Runtime that CloudHub provisions. Original omitted it, so the
+           plugin guessed from the app's min Mule version. Be explicit so DEV,
+           QA and PROD all run the same runtime as ${app.runtime}. -->
+      <muleVersion>${app.runtime}</muleVersion>
+
+      <!-- ---------- AUTHENTICATION (pick ONE method) ----------
+           Method A (original): username + password, read from OS env vars so they
+           never appear in git. Simple, but tied to a human account: breaks on
+           password change, MFA, or when that person leaves. -->
+      <username>${env.ANYPOINT_USERNAME}</username>
+      <password>${env.ANYPOINT_PASSWORD}</password>
+
+      <!-- Method B (recommended for CI/CD): Connected App - a service identity with
+           scoped permissions (e.g. "Deploy Applications"). Create in Access
+           Management > Connected Apps, then swap the two lines above for:
+
+           <connectedAppClientId>${env.ANYPOINT_CLIENT_ID}</connectedAppClientId>
+           <connectedAppClientSecret>${env.ANYPOINT_CLIENT_SECRET}</connectedAppClientSecret>
+           <connectedAppGrantType>client_credentials</connectedAppGrantType>
+
+           Method C: <server>anypoint-exchange</server> referencing an id in
+           ~/.m2/settings.xml (Maven can encrypt those passwords). Good for laptops. -->
+
+      <!-- Anypoint environment NAME (Design/Sandbox/Production...). Must match the
+           name in Runtime Manager exactly, case-sensitive. We reuse ${env}, so your
+           Anypoint environments must be named dev / qa / prod, or map them via
+           profiles (Section 3). -->
+      <environment>${env}</environment>
+
+      <!-- ADDED. Only needed if the app lives in a Business Group rather than the
+           root org. Prefer the ID (stable) over the name (can be renamed). -->
+      <!-- <businessGroupId>${env.ANYPOINT_BG_ID}</businessGroupId> -->
+
+      <!-- APP NAME = the CloudHub domain. Becomes
+           check-in-papi-dev.<region>.cloudhub.io. It must be GLOBALLY UNIQUE across
+           all of CloudHub, not just your org - if someone else took the name the
+           deploy is rejected. Suffixing with the environment also keeps DEV/QA/PROD
+           from overwriting each other. Lowercase, digits, hyphens only. -->
+      <applicationName>check-in-papi-${env}</applicationName>
+
+      <!-- ADDED. Data-centre region for the workers. Pick the closest to your
+           backends (Flights Management SOAP + Passenger Data Postgres) to cut
+           latency. Region also has to match where your VPC lives (see VPC note). -->
+      <region>${ch.region}</region>
+
+      <!-- ADDED. Number of worker instances. 1 = single point of failure, no
+           zero-downtime redeploy. Use 2+ in PROD for HA and rolling updates.
+           Cost note: billed per vCore x worker. -->
+      <workers>${ch.workers}</workers>
+
+      <!-- ADDED. Worker size (vCore): Micro 0.1, Small 0.2, Medium 1, Large 2,
+           xLarge 4 (names per Runtime Manager UI). Micro is fine for DEV. The
+           APIkit + DataWeave + mutual-TLS handshake in this PAPI usually needs at
+           least Small/Medium in PROD, and memory is the first thing to run out. -->
+      <workerType>${ch.worker.type}</workerType>
+
+      <!-- ADDED. Object Store v2 (persistent key-value store). true = enabled.
+           Needed if flows use the Object Store connector, e.g. caching a token or
+           idempotent-message-validator for duplicate check-ins. -->
+      <objectStoreV2>true</objectStoreV2>
+
+      <!-- ADDED. Persistent queues survive a worker restart (VM queue messages are
+           stored in Amazon SQS instead of worker memory). Costs extra and adds
+           latency; enable only if you use VM queues and cannot lose messages. -->
+      <persistentQueues>false</persistentQueues>
+      <persistentQueuesEncrypted>false</persistentQueuesEncrypted>
+
+      <!-- ADDED. Send app metrics/logs to Anypoint Monitoring. Required to see
+           dashboards; needs the right license tier. -->
+      <monitoringEnabled>true</monitoringEnabled>
+
+      <!-- ADDED. CloudHub restarts the worker automatically if it becomes
+           unresponsive. Leave on. -->
+      <!-- <autoRestart>true</autoRestart> -->
+
+      <!-- ADDED. Reach on-prem Flights Management (SOAP, mutual TLS) and Passenger
+           Data (PostgreSQL) from CloudHub. Public CloudHub CANNOT see private
+           networks. You need an Anypoint VPC + VPN/Direct Connect to the data
+           centre, and the worker must be deployed INTO that VPC (set in Runtime
+           Manager or via the platform; not a plugin flag in all versions). Also open
+           the firewall for the VPC CIDR on the SOAP and 5432 ports. -->
+
+      <!-- ---------- PLAIN PROPERTIES ----------
+           Become application properties, visible to anyone with Runtime Manager
+           read access. Only NON-secret values belong here. -->
+      <properties>
+        <!-- Selects the per-environment config file, e.g. config-${mule.env}.yaml
+             and secure-${mule.env}.yaml loaded with ${mule.env} in the global
+             configuration-properties element. -->
+        <mule.env>${env}</mule.env>
+      </properties>
+
+      <!-- ---------- SECURED PROPERTIES ----------
+           FIX/SECURITY: original put mule.key under <properties>, meaning the key
+           that decrypts your Secure Properties file was readable in plain text in
+           Runtime Manager. That defeats the encryption. <securedProperties> values
+           are masked in the UI and API. Same value, same name, safer place. -->
+      <securedProperties>
+        <mule.key>${env.MULE_KEY}</mule.key>
+      </securedProperties>
+
+    </cloudHubDeployment>
+  </configuration>
+</plugin>
+
+
+<!-- ======================================================================
+     SECTION 3 - PER-ENVIRONMENT PROFILES (put in <profiles> at pom root level)
+     Lets `mvn deploy -DmuleDeploy -Pprod` change size, workers, and region
+     without editing the plugin block. Profile properties override Section 1.
+     ====================================================================== -->
+<profiles>
+  <profile>
+    <id>dev</id>
+    <activation><activeByDefault>true</activeByDefault></activation>
+    <properties>
+      <env>dev</env>
+      <ch.workers>1</ch.workers>
+      <ch.worker.type>Micro</ch.worker.type>
+    </properties>
+  </profile>
+  <profile>
+    <id>prod</id>
+    <properties>
+      <env>prod</env>
+      <ch.workers>2</ch.workers>          <!-- HA: 2 workers, load-balanced -->
+      <ch.worker.type>Medium</ch.worker.type>
+    </properties>
+  </profile>
+</profiles>
+
+
+<!-- ======================================================================
+     SECTION 4 - CHEAT SHEET / TROUBLESHOOTING
+     ======================================================================
+     Env vars needed in the shell / CI (never commit these):
+       ANYPOINT_USERNAME, ANYPOINT_PASSWORD   (or the Connected App pair)
+       MULE_KEY                                (Secure Properties encryption key)
+
+     Common failures:
+       "Application name is already in use"  -> applicationName not globally unique.
+       "Environment not found"               -> <environment> spelled differently
+                                                than in Anypoint, or wrong <uri>/BG.
+       401 / Unauthorized                     -> bad creds, MFA on the user, or the
+                                                Connected App lacks Deploy scope.
+       Build passes but app is FAILED         -> skipDeploymentVerification=true, or
+                                                wrong mule.key so secure-*.yaml can't
+                                                be decrypted; check Runtime Manager logs.
+       Deploy OK, calls to on-prem time out   -> no VPC/VPN, or firewall blocks it.
+       "Unable to find plugin ... mule-maven-plugin"
+                                              -> missing MuleSoft repo in
+                                                <pluginRepositories> (see reference pom).
+
+     Verify the exact element names for your plugin version in the MuleSoft
+     mule-maven-plugin docs (CloudHub deployment section) before relying on the
+     optional elements marked ADDED; supported fields shift between 3.x and 4.x.
+-->

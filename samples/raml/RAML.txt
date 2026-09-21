@@ -1,0 +1,425 @@
+=> RAML( RESTful API Modeling Language )
+   -------------------------------------
+
+-> YAML based language
+-> describe RESTful APIs
+
+Purpose
+-------
+-> Helps design API in human-readable, machine-parsable format
+-> Encourage contract-first API design
+-> mock and test API before backend is ready
+-> Auto-generates flows and router using API kit in Anypoint Studio
+-> Helps with governance, reuse and standardization
+-> Supports modularization ( traits, resourceTypes, includes )
+
+
+Foundations and file structure
+------------------------------
+
+=> Folder layout (recommended)
+	/api: Root RAML file (e.g., customer-api.raml).
+	/types: Data types (YAML files).
+	/traits: Common method features (e.g., pagination, error responses).
+	/resourceTypes: Blueprints for resource patterns (collection/item).
+	/examples: Example payloads.
+	/security: Security schemes and documentation.
+	/schemas (optional): JSON Schemas if not using RAML types.
+	/docs: Markdown documentation sections.
+
+
+
+
+
+
+=> Libraries, includes, overlays, and extensions
+   ---------------------------------------------
+
+
+-> Libraries
+	-> Purpose: Group types, traits, resourceTypes into reusable modules.
+	-> Usage: uses: to import libraries and prefix types.
+
+
+-> Includes
+	-> Purpose: Reference external files for examples, fragments.
+	-> Usage: !include examples/customer.json.
+
+~> Annotations
+	-> Add custom metadata to RAML elements. Helps in documentation
+
+-> Overlays and extensions
+	-> Overlays: Environment-specific variations (e.g., test/stage).
+	-> Extensions: Add non-breaking additions for specific consumers.
+Keep the base RAML stable; apply overlays for environment differences.
+
+
+
+
+
+
+=> Root document metadata
+
+~> RAML header:
+~> Title: Human-readable name of the API.
+~> Version: API version string (semantic is recommended, e.g., v1).
+~> Base URI: Root address or placeholder to be resolved at deploy time.
+~> Protocol(s): http/https.
+~> Media types: Default request/response representations.
+~> Description: Purpose and scope.
+
+Example:
+--------
+	#%RAML 1.0
+	title: Customer Service API
+	version: v1
+	baseUri: https://api.example.com/customers
+	protocols: [ HTTPS ]
+	mediaType: application/json
+	description: |
+  		Customer Service API for managing customer profiles and preferences.
+
+
+
+
+
+
+~> Resource(path segment/Endpoint)
+
+- Resource: 
+	Path segment under the baseUri (e.g., /customers).
+- Nested resources: 
+	Sub-paths for relationships (e.g., /customers/{id}/orders).
+- Naming: 
+	Use nouns, lowercase, hyphens for multi-word (e.g., /customer-preferences).
+Folder layout (recommended)
+
+
+~> Methods: GET, POST, PUT, PATCH, DELETE.
+~> Bodies: Request/response content defined via types or schemas.
+~> Responses: Status code plus body and headers.
+~> Examples: Provide realistic examples for clarity and testing.
+
+/customers: 
+  get: 
+	//we don't define request body ??
+  post:
+    queryParameters:
+      page:
+        type: integer
+        default: 1
+      pageSize:
+        type: integer
+        default: 25
+    body:
+      application/json:
+        type: CustomerCreate
+        example: !include examples/customer-create.json
+    responses:
+      201:
+        headers:
+          Location:
+            type: string
+            description: URI of the created resource
+        body:
+          application/json:
+            type: Customer
+            example: !include examples/customer.json
+      400:
+        body:
+          application/json:
+            type: Error
+
+
+~> URI parameters: Variables embedded in the path (required).
+~> Query parameters: Optional filters, paging, sorting.
+~> Headers: Metadata (e.g., correlation IDs, content negotiation).
+
+
+/customers:
+  get:
+    queryParameters:
+      sort:
+        type: string
+        enum: [ name, createdAt ]
+      order:
+        type: string
+        enum: [ asc, desc ]
+      page:
+        type: integer
+        minimum: 1
+        default: 1
+      pageSize:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    headers:
+      X-Correlation-Id:
+        type: string
+        description: Client-provided correlation identifier
+
+
+
+
+
+
+=> Data modeling with types
+
+~> RAML types
+	Scalar: string, number, integer, boolean, date-only, time-only, datetime, file.
+	Object: Define properties, required fields, constraints.
+	Array: Typed collections with minItems/maxItems.
+	Union: a | b for alternative shapes.
+	Inheritance: type: BaseType for reuse and specialization.
+
+Example types (types/customer-types.raml):
+
+#%RAML 1.0 Library
+types:
+  CustomerId:
+    type: string
+    minLength: 3
+    maxLength: 36
+
+  Email:
+    type: string
+    pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+
+  Address:
+    type: object
+    properties:
+      line1: string
+      line2?: string
+      city: string
+      state: string
+      postalCode: string
+      country: string
+
+  Customer:
+    type: object
+    properties:
+      id: CustomerId
+      name: string
+      email: Email
+      createdAt: datetime
+      address?: Address
+    required: [ id, name, email, createdAt ]
+
+  CustomerCreate:
+    type: object
+    properties:
+      name: string
+      email: Email
+      address?: Address
+    required: [ name, email ]
+
+  CustomerList:
+    type: object
+    properties:
+      items:
+        type: Customer[]
+      page: integer
+      pageSize: integer
+      total: integer
+
+  Error:
+    type: object
+    properties:
+      code: string
+      message: string
+      details?: string
+
+
+uses:
+  customerTypes: types/customer-types.raml
+
+
+
+
+
+
+
+
+=> Traits ( method-level common behavior )
+   ---------------------------------------
+
+-> Reusable named blocks that define common behaviors(parameter,headers and responses) you want to apply to multiple methods or endpoints.
+	-> example: Pagination, standard error handling, rate-limit headers.
+
+#--------------------------------------------------------------------------------------
+	#%RAML 1.0 Trait
+	queryParameters:
+	  page:
+	    type: integer
+	    default: 1
+	  pageSize:
+	    type: integer
+	    default: 25
+	responses:
+	  400:
+	    body:
+	      application/json:
+	        type: Error
+#--------------------------------------------------------------------------------------
+/customers:
+  get:
+    is: [ pagination ]
+#--------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+=> resourceTypes ( resource-level patterns )
+   -----------------------------------------
+
+-> Purpose: Blueprint for collections vs. individual items.
+	-> Examples: Standard GET/POST for collection; GET/PUT/PATCH/DELETE for item.
+
+# -------------------------------------------------------------------------------------
+	#%RAML 1.0 ResourceType
+	get:
+	  description: List <<resourcePathName>>
+	post:
+	  description: Create a new <<resourcePathName | !singularize>>
+#--------------------------------------------------------------------------------------
+
+	#%RAML 1.0 ResourceType
+	get:
+	  description: Get <<resourcePathName | !singularize>> by ID
+	put:
+	  description: Replace existing <<resourcePathName | !singularize>>
+	patch:
+	  description: Partially update <<resourcePathName | !singularize>>
+	delete:
+	  description: Delete <<resourcePathName | !singularize>>
+#--------------------------------------------------------------------------------------
+
+uses:
+  collectionRT: resourceTypes/collection.raml
+  itemRT: resourceTypes/item.raml
+
+/customers:
+  type: collectionRT.collection
+
+/customers/{customerId}:
+  type: itemRT.item
+#--------------------------------------------------------------------------------------
+
+
+
+=> Fragments
+   ---------
+
+-> Reusable piece of RAML ( like types, traits, resourceTypes, examples, security schemes ) stored in separate files.
+-> Modularize your API design
+-> reference using !include or uses
+
+
+~> Local Fragments
+	-> within the same project Folder
+	-> typically organized into subfolder like /types, /traits, /examples
+	-> Referenced using relative paths
+
+~> Global Fragments
+	-> shared across multiple projects or APIs
+	-> stored in central repository ( like Exchange in MuleSoft Anypoint Platform).
+	-> Using uses
+
+
+
+
+
+=> Security schemes
+   ----------------
+
+~> Common schemes
+   --------------
+
+~> OAuth 2.0: Bearer tokens with flows (authorization code, client credentials).
+~> Basic Auth: Username/password header.
+~> API Key: Header or query parameter.
+
+#--------------------------------------------------------------------------------------
+#%RAML 1.0 SecurityScheme
+type: OAuth 2.0
+describedBy:
+  headers:
+    Authorization:
+      type: string
+      description: Bearer access token
+  responses:
+    401:
+      body:
+        application/json:
+          type: Error
+settings:
+  authorizationUri: https://auth.example.com/oauth/authorize
+  accessTokenUri: https://auth.example.com/oauth/token
+  scopes: [ customers.read, customers.write ]
+#--------------------------------------------------------------------------------------
+uses:
+  oauth2: security/oauth2.raml
+
+securedBy: [ oauth2 ]
+
+#--------------------------------------------------------------------------------------
+You can secure specific resources or methods:
+/customers:
+  get:
+    securedBy: [ oauth2 ]
+#--------------------------------------------------------------------------------------
+
+
+
+
+
+
+=> Error handling and status codes
+
+~> Standardize errors
+   ------------------
+-> Error type: Code and message, optional details.
+-> Consistent status codes: 200/201 for success, 204 for no content, 400, 401, 403, 404, 409 for client issues, 500/503 for server issues.
+-> Trait for errors: Reuse across methods.
+
+#%RAML 1.0 Trait
+responses:
+  400:
+    body:
+      application/json:
+        type: Error
+  401:
+    body:
+      application/json:
+        type: Error
+  403:
+    body:
+      application/json:
+        type: Error
+  404:
+    body:
+      application/json:
+        type: Error
+  409:
+    body:
+      application/json:
+        type: Error
+  500:
+    body:
+      application/json:
+        type: Error
+
+/customers:
+  get:
+    is: [ errors, pagination ]
+
+
+
+
+
+

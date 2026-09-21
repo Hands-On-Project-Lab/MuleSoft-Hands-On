@@ -1,0 +1,127 @@
+=> Step-by-step workflow to design an API with RAML
+   ------------------------------------------------
+-> Define purpose and boundaries.
+	Goal: What problem does the API solve? Which resources will it expose?
+
+-> Set root metadata.
+	Title, version, baseUri, mediaType, protocols.
+
+-> Model data.
+	Create RAML types for core entities and errors (in libraries).
+
+-> Design resources and relationships.
+	Primary resources (e.g., /customers) and nested resources (e.g., /customers/{id}/orders).
+
+-> Specify methods and behaviors.
+	CRUD mapping, idempotency for PUT/DELETE, partial updates for PATCH.
+
+-> Define parameters and headers.
+	URI parameters for identifiers; query parameters for filters and pagination.
+
+->Standardize responses.
+	Status codes, consistent Error type, Location header for creations.
+
+-> Add security schemes.
+	OAuth 2.0 / API key and apply at API or method level.
+
+-> Enable reuse.
+	Traits (pagination, errors), resourceTypes (collection/item), libraries.
+
+-> Provide examples and docs.
+	Realistic request/response examples and clear descriptions.
+
+-> Version and compatibility plan.
+	Start with v1, plan for non-breaking changes, introduce v2 for breaking changes.
+
+-> Validate and iterate.
+	Run linters/validators, share with stakeholders, refine based on feedback.
+
+
+
+#%RAML 1.0
+title: Customer Service API
+version: v1
+baseUri: https://api.example.com/customers
+protocols: [ HTTPS ]
+mediaType: application/json
+
+uses:
+  typesLib: types/customer-types.raml
+  pagination: traits/pagination.raml
+  errors: traits/errors.raml
+  collectionRT: resourceTypes/collection.raml
+  itemRT: resourceTypes/item.raml
+  oauth2: security/oauth2.raml
+
+securedBy: [ oauth2 ]
+
+/customers:
+  type: collectionRT.collection
+  get:
+    is: [ pagination, errors ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: typesLib.CustomerList
+            example: !include examples/customer-list.json
+  post:
+    is: [ errors ]
+    body:
+      application/json:
+        type: typesLib.CustomerCreate
+        example: !include examples/customer-create.json
+    responses:
+      201:
+        headers:
+          Location:
+            type: string
+        body:
+          application/json:
+            type: typesLib.Customer
+            example: !include examples/customer.json
+
+/customers/{customerId}:
+  type: itemRT.item
+  uriParameters:
+    customerId:
+      type: typesLib.CustomerId
+  get:
+    is: [ errors ]
+    responses:
+      200:
+        body:
+          application/json:
+            type: typesLib.Customer
+            example: !include examples/customer.json
+      404:
+        body:
+          application/json:
+            type: typesLib.Error
+  put:
+    is: [ errors ]
+    body:
+      application/json:
+        type: typesLib.Customer
+    responses:
+      200:
+        body:
+          application/json:
+            type: typesLib.Customer
+  patch:
+    is: [ errors ]
+    body:
+      application/json:
+        type: typesLib.Customer
+    responses:
+      200:
+        body:
+          application/json:
+            type: typesLib.Customer
+  delete:
+    is: [ errors ]
+    responses:
+      204:
+        body:
+          application/json:
+            example: {}

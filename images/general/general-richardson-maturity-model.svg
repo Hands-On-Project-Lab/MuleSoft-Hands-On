@@ -1,0 +1,84 @@
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#2c3e50">Richardson Maturity Model</text>
+  
+  <!-- Level 0: The Swamp of POX -->
+  <rect x="50" y="80" width="150" height="120" fill="#e74c3c" stroke="#c0392b" stroke-width="2" rx="10"/>
+  <text x="125" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">Level 0</text>
+  <text x="125" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white">The Swamp of POX</text>
+  <text x="125" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Single URI</text>
+  <text x="125" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Single HTTP Method</text>
+  <text x="125" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">(Usually POST)</text>
+  
+  <!-- Level 1: Resources -->
+  <rect x="250" y="80" width="150" height="120" fill="#f39c12" stroke="#e67e22" stroke-width="2" rx="10"/>
+  <text x="325" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">Level 1</text>
+  <text x="325" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white">Resources</text>
+  <text x="325" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Multiple URIs</text>
+  <text x="325" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Single HTTP Method</text>
+  <text x="325" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">/users, /orders</text>
+  
+  <!-- Level 2: HTTP Verbs -->
+  <rect x="450" y="80" width="150" height="120" fill="#3498db" stroke="#2980b9" stroke-width="2" rx="10"/>
+  <text x="525" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">Level 2</text>
+  <text x="525" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white">HTTP Verbs</text>
+  <text x="525" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Multiple URIs</text>
+  <text x="525" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Multiple HTTP Methods</text>
+  <text x="525" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">GET, POST, PUT, DELETE</text>
+  
+  <!-- Level 3: Hypermedia Controls -->
+  <rect x="650" y="80" width="150" height="120" fill="#27ae60" stroke="#229954" stroke-width="2" rx="10"/>
+  <text x="725" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">Level 3</text>
+  <text x="725" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white">Hypermedia</text>
+  <text x="725" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">HATEOAS</text>
+  <text x="725" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Self-describing</text>
+  <text x="725" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="white">Discoverability</text>
+  
+  <!-- Arrows showing progression -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34495e"/>
+    </marker>
+  </defs>
+  <line x1="200" y1="140" x2="245" y2="140" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="400" y1="140" x2="445" y2="140" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <line x1="600" y1="140" x2="645" y2="140" stroke="#34495e" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Maturity indicator -->
+  <text x="400" y="220" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-style="italic" fill="#7f8c8d">→ Progression to a better REST Architecture →</text>
+
+  <!-- Detailed explanations -->
+  <text x="50" y="260" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2c3e50">Level 0: The Swamp of POX (Plain Old XML)</text>
+  <text x="50" y="280" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Single endpoint URL (e.g., /api)</text>
+  <text x="50" y="300" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• All operations through POST requests</text>
+  <text x="50" y="320" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Action defined in request body</text>
+  <text x="50" y="340" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• RPC-style communication</text>
+  
+  <text x="50" y="380" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2c3e50">Level 1: Resources</text>
+  <text x="50" y="400" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Multiple resource endpoints (/users, /orders, /products)</text>
+  <text x="50" y="420" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Still using single HTTP method (usually POST)</text>
+  <text x="50" y="440" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Resources identified by URIs</text>
+  
+  <text x="450" y="260" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2c3e50">Level 2: HTTP Verbs</text>
+  <text x="450" y="280" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Proper use of HTTP methods</text>
+  <text x="450" y="300" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• GET for retrieval, POST for creation</text>
+  <text x="450" y="320" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• PUT for updates, DELETE for removal</text>
+  <text x="450" y="340" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• HTTP status codes for responses</text>
+  
+  <text x="450" y="380" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2c3e50">Level 3: Hypermedia Controls (HATEOAS)</text>
+  <text x="450" y="400" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Responses include links to related resources</text>
+  <text x="450" y="420" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Self-describing API responses</text>
+  <text x="450" y="440" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Client can discover available actions</text>
+  <text x="450" y="460" font-family="Arial, sans-serif" font-size="12" fill="#34495e">• Loose coupling between client and server</text>
+  
+  <!-- Example box -->
+  <rect x="50" y="490" width="700" height="100" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" rx="5"/>
+  <text x="60" y="510" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2c3e50">Examples:</text>
+  <text x="60" y="530" font-family="Arial, sans-serif" font-size="11" fill="#34495e">Level 0: POST /api with XML body containing operation</text>
+  <text x="60" y="545" font-family="Arial, sans-serif" font-size="11" fill="#34495e">Level 1: POST /users, POST /orders (separate resources)</text>
+  <text x="60" y="560" font-family="Arial, sans-serif" font-size="11" fill="#34495e">Level 2: GET /users/123, PUT /users/123, DELETE /users/123</text>
+  <text x="60" y="575" font-family="Arial, sans-serif" font-size="11" fill="#34495e">Level 3: Response includes {"links": {"self": "/users/123", "orders": "/users/123/orders", upsell: {rooms: /rooms?type=suite}}}</text>
+</svg>

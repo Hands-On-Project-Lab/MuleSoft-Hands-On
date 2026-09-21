@@ -1,44 +1,149 @@
 #%RAML 1.0
 title: Check-In PAPI
 version: v1
-baseUri: https://api.anyairline.com/checkin/{version}
-mediaType: application/json
-
-securitySchemes:
-  client-id-secret:
-    type: Pass Through
-    describedBy:
-      headers:
-        client_id: { type: string }
-        client_secret: { type: string }
+description: Check-In PAPI allows you to check-in to an AnyAirline flight and check-in any additional baggage by providing a PNR(Passenger Name Record) and last name, paying for any baggage using Paypal.
+baseUri: https://tngaa-check-in-papi-uniqid.shard.usa-e1.cloudhub.io/api/v1
 
 types:
-  CheckInResult:
+  Checkin:
+    description: Represents a check-in request for a given passenger.
+    type: object
     properties:
-      pnr: string
-      status: string
-      checkedInAt?: string
-  Error:
-    properties:
-      message: string
+      lastName:
+        type: string
+      numBags:
+        type: integer
+    example:
+      lastName: "Smith"
+      numBags: 2
 
-/tickets/{PNR}/checkin:
+  PaymentId:
+    description: Represents an instance of a Payment made.
+    type: object
+    properties:
+      paymentID:
+        type: string
+    example:
+      paymentID: "PAY-1AKD7482FAB9STATKO"
+
+  BoardingPass:
+    description: Represents a Boarding Pass for a Passenger linked via PNR(Passenger Name Record).
+    type: object
+    properties:
+      lastName:
+        type: string
+      flightDate:
+        description: flight date in local time according to the departing airport
+        type: date-only
+      depart:
+        description: flight departure time in local time according to the departing airport
+        type: time-only
+      boarding:
+        description: boarding time in local time according to the departing airport
+        type: time-only
+      gate:
+        type: string
+      flight:
+        type: string
+      airportDepart:
+        type: string
+      airportArrive:
+        type: string
+      class:
+        type: string
+        enum: [First, Premium, Business, Economy]
+      seat:
+        type: string
+      bagsCount:
+        type: number
+      PNR:
+        type: string
+    example:
+      lastName: "Smith"
+      flightDate: "2019-02-14"
+      depart: "14:30:00"
+      boarding: "13:15:00"
+      gate: "4A"
+      flight: "ANY6584"
+      airportDepart: "ATL"
+      airportArrive: "SFO"
+      class: "Economy"
+      seat: "16C"
+      bagsCount: 2
+      PNR: "928382J"
+
+  PaymentApproval:
+    description: Represents an approved Payment linked to the Payment requested and the Payer that made the payment by ID.
+    type: object
+    properties:
+      paymentID:
+        type: string
+      payerID:
+        type: string
+    example:
+      paymentID: "PAY-1AKD7482FAB9STATKO"
+      payerID: "STK829AJDK9"
+
+  DefaultResponse:
+    type: PaymentId | BoardingPass
+    examples:
+      withBags:
+        paymentID: "PAY-1AKD7482FAB9STATKO"
+      withoutBags:
+        lastName: "Smith"
+        flightDate: "2019-02-14"
+        depart: "14:30:00"
+        boarding: "13:15:00"
+        gate: "4A"
+        flight: "ANY6584"
+        airportDepart: "ATL"
+        airportArrive: "SFO"
+        class: "Economy"
+        seat: "16C"
+        bagsCount: 0
+        PNR: "928382J"
+
+/tickets/{PNR}:
   uriParameters:
     PNR:
       type: string
-      description: Passenger Name Record
-  put:
-    securedBy: [client-id-secret]
-    responses:
-      200:
-        body:
-          type: CheckInResult
-          example: { "pnr": "ABC123", "status": "CHECKED_IN", "checkedInAt": "2026-09-19T10:00:00Z" }
-      404:
-        body:
-          type: Error
-          example: { "message": "PNR not found" }
-      503:
-        body:
-          type: Error
-          example: { "message": "Flights system unavailable" }
+
+  /checkin:
+    description: Checks the passenger in with given number of bags
+    put:
+      body:
+        application/json:
+          type: Checkin
+      responses:
+        200:
+          body:
+            application/json:
+              type: DefaultResponse
+              description: If there is baggage to check in, return a payment ID from the Paypal SAPI for the passenger to approve payment. Payment approval happens in the Mobile App. If there is no baggage to check in, return the boarding pass.
+        400:
+          body:
+            application/json:
+              example:
+                message: "Invalid passenger name record or bad data uploaded."
+
+  /paymentApproval:
+    description: Execute payment after passenger's approval from the Mobile App.
+    put:
+      body:
+        application/json:
+          type: PaymentApproval
+      responses:
+        200:
+          body:
+            application/json:
+              type: BoardingPass
+        400:
+          body:
+            application/json:
+              example:
+                message: "Invalid passenger name record or bad data uploaded."
+        403:
+          body:
+            application/json:
+              example:
+                message: "Invalid paymentId and payerId combination given. Cannot approve payment."

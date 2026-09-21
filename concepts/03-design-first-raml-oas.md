@@ -11,15 +11,21 @@ flowchart LR
 
 Why: changes are cheap while there's only a contract. Mobile team and partners can call the **mock** before a single flow exists.
 
+![alt text](../images/general/general-api-&-data-layer.png)
+
 ## RAML 1.0 vs OAS
 
-| | RAML 1.0 (used by AnyAirline) | OAS (Swagger / 2.0, 3.x) |
-|---|---|---|
-| Format | YAML | YAML or JSON |
-| Reuse | `!include`, libraries, traits, resource types | Fewer include mechanisms |
-| Size as API grows | Stays modular | Files tend to grow |
-| Ecosystem | Anypoint tooling is first-class | Huge industry adoption |
-| In Anypoint | Native in Design Center | OAS 2.0 supported; importable |
+|                   | RAML 1.0 (used by AnyAirline)                 | OAS (Swagger / 2.0, 3.x)      |
+| ----------------- | --------------------------------------------- | ----------------------------- |
+| Format            | YAML                                          | YAML or JSON                  |
+| Reuse             | `!include`, libraries, traits, resource types | Fewer include mechanisms      |
+| Size as API grows | Stays modular                                 | Files tend to grow            |
+| Ecosystem         | Anypoint tooling is first-class               | Huge industry adoption        |
+| In Anypoint       | Native in Design Center                       | OAS 2.0 supported; importable |
+
+-> [RAML](C:\Users\kumar\Desktop\mulesoft-anyairline-hands-on\samples\raml\RAML.txt)
+
+-> [Step-by-step workflow to design RAML](C:\Users\kumar\Desktop\mulesoft-anyairline-hands-on\samples\raml\Step-by-step-workflow-to-design-RAML.txt)
 
 ## Minimal RAML (full file: `samples/raml/check-in-papi.raml`)
 

@@ -11,16 +11,18 @@ flowchart LR
   O -. feedback .-> D
 ```
 
-| Phase | Tool | What you do |
-|---|---|---|
-| Design | API Designer (Design Center) | Write the RAML/OAS contract |
-| Prototype | Mocking Service | Live mock before any code |
-| Validate | API Console | Consumers give feedback on spec |
-| Publish | Exchange & API Portals | Discoverable assets + docs |
-| Develop | Anypoint Studio | Build Mule apps |
-| Test | MUnit | Unit + integration tests |
-| Deploy | Runtime Manager | CloudHub / on-prem |
-| Operate | API Manager & Analytics | Policies, SLAs, monitoring |
+| Phase     | Tool                         | What you do                     |
+| --------- | ---------------------------- | ------------------------------- |
+| Design    | API Designer (Design Center) | Write the RAML/OAS contract     |
+| Prototype | Mocking Service              | Live mock before any code       |
+| Validate  | API Console                  | Consumers give feedback on spec |
+| Publish   | Exchange & API Portals       | Discoverable assets + docs      |
+| Develop   | Anypoint Studio              | Build Mule apps                 |
+| Test      | MUnit                        | Unit + integration tests        |
+| Deploy    | Runtime Manager              | CloudHub / on-prem              |
+| Operate   | API Manager & Analytics      | Policies, SLAs, monitoring      |
+
+![Anypoint lifecycle](../images/general/general-anypoint-api-lifecycle.png)
 
 ## Scope of this repo
 
@@ -35,7 +37,5 @@ flowchart LR
   P --> F[Flights Management<br/>on-prem SOAP, mutual TLS]
   P --> PD[Passenger Data<br/>on-prem PostgreSQL]
 ```
-
-![Anypoint lifecycle](../images/general/general-anypoint-api-lifecycle.png)
 
 **Next →** [02 REST & Richardson](02-rest-richardson.md)
