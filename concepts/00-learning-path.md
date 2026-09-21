@@ -40,6 +40,8 @@ Every later step *reuses* the contract: APIkit scaffolds from it, MUnit asserts 
 | 14 | [08 VPC, On-Prem, Deployment Targets](08-vpc-onprem-targets.md) | 23, 24, 27 | Lab 08 |
 | 15 | [15 Deploy & Operate](15-deploy-operate.md) *(added)* | 35 step 5 | [Lab 07](../labs/lab-07-deploy-cloudhub.md), [Lab 09](../labs/lab-09-mutual-tls.md) |
 | 16 | [16 CloudHub 1.0 vs 2.0 vs RTF](16-cloudhub-rtf-deployment-targets.md) *(added)* | – | [Lab 10](../labs/lab-10-cloudhub1-custom-domain.md), [Lab 11](../labs/lab-11-cloudhub2-private-space.md), [Lab 12](../labs/lab-12-rtf-ingress-tls.md) |
+| 17 | [17 Coding Conventions, DRY & Naming](17-coding-conventions.md) *(added)* | – | [Lab 13](../labs/lab-13-coding-conventions.md) |
+| 18 | [18 Maven Build Fundamentals](18-maven-build.md) *(added)* | 35 step 5 | [Lab 14](../labs/lab-14-maven-parameterize-deploy.md) |
 
 > Why TLS comes before autodiscovery: the walkthrough (slide 35) builds HTTPS *before* registering with API Manager, and autodiscovery needs the secured app to start cleanly.
 
@@ -55,6 +57,8 @@ Every later step *reuses* the contract: APIkit scaffolds from it, MUnit asserts 
 | Client ID enforcement (deck mentions it in one line) | 05 |
 | Runtime Manager deploy, logs, CI/CD, monitoring | 15 |
 | CloudHub 1.0 vs 2.0 vs RTF networking/TLS differences | 16 |
+| DRY, naming conventions, formatting/lint | 17 |
+| Maven lifecycle, dependency management, CI/CD deploy from the command line | 18 |
 
 ## Accuracy notes on the deck (check against your versions)
 

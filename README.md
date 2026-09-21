@@ -36,6 +36,8 @@ flowchart LR
 | ☐ | [Lab 10 CloudHub 1.0 custom domain](labs/lab-10-cloudhub1-custom-domain.md) | [16](concepts/16-cloudhub-rtf-deployment-targets.md) | CA-signed cert, DLB/Certificates upload, CNAME |
 | ☐ | [Lab 11 CloudHub 2.0 Private Space](labs/lab-11-cloudhub2-private-space.md) | [16](concepts/16-cloudhub-rtf-deployment-targets.md) | Private Space, firewall rules, static IP |
 | ☐ | [Lab 12 RTF Ingress + TLS](labs/lab-12-rtf-ingress-tls.md) | [16](concepts/16-cloudhub-rtf-deployment-targets.md) | Kubernetes Secret, Ingress resource, TLS termination choice |
+| ☐ | [Lab 13 Coding conventions](labs/lab-13-coding-conventions.md) | [17](concepts/17-coding-conventions.md) | Extract to flow, naming check, formatter, MUnit re-run |
+| ☐ | [Lab 14 Maven parameterize & deploy](labs/lab-14-maven-parameterize-deploy.md) | [18](concepts/18-maven-build.md), [13](concepts/13-properties-secrets.md) | mule-maven-plugin, `mvn deploy -DmuleDeploy` |
 
 ## 📚 Concept index
 
@@ -58,6 +60,8 @@ flowchart LR
 | 14 | [MUnit testing](concepts/14-munit-testing.md) |
 | 15 | [Deploy & operate](concepts/15-deploy-operate.md) |
 | 16 | [CloudHub 1.0 vs 2.0 vs RTF](concepts/16-cloudhub-rtf-deployment-targets.md) |
+| 17 | [Coding conventions, DRY & naming](concepts/17-coding-conventions.md) |
+| 18 | [Maven build fundamentals](concepts/18-maven-build.md) |
 
 ## 🗂 Structure
 

@@ -1,0 +1,20 @@
+<!-- mule-maven-plugin snippet: package + deploy to CloudHub. Merge into pom.xml <build><plugins>. -->
+<plugin>
+  <groupId>org.mule.tools.maven</groupId>
+  <artifactId>mule-maven-plugin</artifactId>
+  <version>REPLACE_WITH_PLUGIN_VERSION</version>
+  <extensions>true</extensions>
+  <configuration>
+    <cloudHubDeployment>
+      <uri>https://anypoint.mulesoft.com</uri>
+      <username>${env.ANYPOINT_USERNAME}</username>
+      <password>${env.ANYPOINT_PASSWORD}</password>
+      <applicationName>check-in-papi-${env}</applicationName>
+      <environment>${env}</environment>
+      <properties>
+        <mule.env>${env}</mule.env>
+        <mule.key>${env.MULE_KEY}</mule.key>
+      </properties>
+    </cloudHubDeployment>
+  </configuration>
+</plugin>
