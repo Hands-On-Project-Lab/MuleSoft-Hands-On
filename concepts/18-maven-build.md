@@ -78,10 +78,10 @@ A minimal `pom.xml`:
 #### Three kinds of `${...}` — don't mix them up
 
 | Syntax             | Comes from                                                                         | Example in this course                             |
-| ------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------- | --- | --- |
-| `${some.property}` | `<properties>` in the pom, a profile, or `-Dsome.property=...` on the command line | `${mule.maven.plugin.version}`, `${env}`           |     |     |
-| `${env.NAME}`      | An **operating-system environment variable** called `NAME`                         | `${env.ANYPOINT_PASSWORD}`, `${env.MULE_KEY}`      |     |     |
-| `${project.xxx}`   | The POM itself (Maven's built-in model)                                            | `${project.version}`, `${project.build.directory}` |     |     |
+| ------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------- | 
+| `${some.property}` | `<properties>` in the pom, a profile, or `-Dsome.property=...` on the command line | `${mule.maven.plugin.version}`, `${env}`           |
+| `${env.NAME}`      | An **operating-system environment variable** called `NAME`                         | `${env.ANYPOINT_PASSWORD}`, `${env.MULE_KEY}`      |   
+| `${project.xxx}`   | The POM itself (Maven's built-in model)                                            | `${project.version}`, `${project.build.directory}` |
 
 `${env}` (no dot) is a **Maven property** set by `-Denv=dev` or a profile; `${env.ANYPOINT_PASSWORD}` (with a dot) reads the **shell** variable. They look alike and are unrelated. A `-D` on the command line **overrides** the same property declared in the pom or a profile, which is exactly why `-Denv=qa` works on top of a default of `dev`.
 
