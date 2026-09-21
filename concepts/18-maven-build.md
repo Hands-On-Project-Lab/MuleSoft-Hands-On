@@ -75,6 +75,23 @@ A minimal `pom.xml`:
 
 `<properties>` are build-time variables (referenced as `${maven.compiler.target}`) — change a version once instead of in ten places. Every `pom.xml` implicitly inherits from Maven's built-in **Super POM** (default folder layout `src/main/java`, Maven Central as a default remote repo, default plugin bindings) — `mvn help:effective-pom` shows the fully merged result. **Credentials never go here** — they belong in `~/.m2/settings.xml`, since `pom.xml` is checked into version control.
 
+### pom.xml for a Mule application — check-in-papi's actual pieces
+
+A Mule app's `pom.xml` differs from a plain Java one in three ways: `packaging` is `mule-application` (not `jar`), dependencies are mostly **connectors** (each with `<classifier>mule-plugin</classifier>`), and connectors/`mule-maven-plugin` come from **MuleSoft's own repository**, not Central. Full annotated reference: [`samples/maven/pom-reference.xml`](../samples/maven/pom-reference.xml).
+
+| Piece | Artifact | Used for, in this course |
+|---|---|---|
+| Packaging | `mule-application` | Tells `mule-maven-plugin` to bundle `src/main/mule` + `src/main/resources` into a deployable app, not a plain jar |
+| Connector | `mule-http-connector` | The public HTTP Listener (`samples/mule/https-listener.xml`) and any plain-HTTP outbound calls |
+| Connector | `mule-apikit-module` | Scaffolds flows from `samples/raml/check-in-papi.raml`, validates requests before your flow runs |
+| Connector | `mule-ws-connector` | Calls **Flights Management** (on-prem SOAP, mutual TLS — pairs with `samples/mule/mutual-tls.xml`) |
+| Connector | `mule-db-connector` + `org.postgresql:postgresql` | Talks to **Passenger Data** (on-prem PostgreSQL); the connector needs the plain JDBC driver alongside it |
+| Extension | `mule-secure-configuration-property-extension` | Decrypts `secure-${mule.env}.yaml` at runtime — see [13 Properties & Secrets](13-properties-secrets.md) |
+| Test | `munit-runner`, `munit-tools` | `scope=test` — never shipped in the deployed artifact; power `samples/munit/checkin-test.xml` |
+| Plugin | `mule-maven-plugin` | Packages the `mule-application` artifact; `deploy` goal pushes to CloudHub (see below) |
+| Plugin | `munit-maven-plugin` | Binds MUnit to `mvn test`/`verify`, can fail the build below a coverage threshold |
+| Repository | `repository.mulesoft.org` | Connectors and `mule-maven-plugin` aren't on Central — resolution fails without this declared |
+
 ### Maven core — the engine
 
 Doesn't compile or test anything itself; it walks an ordered sequence of **phases** and triggers whatever plugin **goal** is bound to each one. Three built-in lifecycles:

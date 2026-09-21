@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Reference pom.xml for check-in-papi (Mule 4 application).
+  Every block below is commented with WHERE it is used and WHY, specific to this
+  course's stack: HTTP Listener (public API), Web Service Consumer -> Flights
+  Management (on-prem SOAP, mutual TLS), Database connector -> Passenger Data
+  (on-prem PostgreSQL), APIkit, Secure Properties, Autodiscovery, MUnit.
+  This is a reference/teaching file - copy the sections you need into your
+  project's real pom.xml, don't run this file standalone.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <!-- Always 4.0.0 - the POM schema version, not your app's version. -->
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    GAV coordinates - the project's unique address, and how ~/.m2 lays out its
+    cache folder: ~/.m2/repository/com/anyairline/check-in-papi/1.0.0-SNAPSHOT/
+  -->
+  <groupId>com.anyairline</groupId>
+  <artifactId>check-in-papi</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+
+  <!--
+    packaging = mule-application (NOT jar). This tells mule-maven-plugin to
+    produce the CloudHub/RTF-deployable artifact layout (src/main/mule flows +
+    src/main/resources properties bundled together), not a plain library jar.
+  -->
+  <packaging>mule-application</packaging>
+
+  <name>Check-In PAPI</name>
+  <description>Process API: check-in a passenger by PNR, fronting Flights Management (SOAP) and Passenger Data (PostgreSQL)</description>
+
+  <!--
+    Properties = build-time variables. Bump a connector/runtime version once
+    here instead of hunting through every <dependency>/<plugin> block.
+  -->
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <app.runtime>4.6.0</app.runtime>                 <!-- Mule runtime version - must match Anypoint Studio -->
+    <mule.maven.plugin.version>4.1.0</mule.maven.plugin.version>
+    <munit.version>3.3.4</munit.version>
+    <munit.extensions.maven.plugin.version>1.1.0</munit.extensions.maven.plugin.version>
+    <http.connector.version>1.9.0</http.connector.version>
+    <ws.connector.version>1.4.0</ws.connector.version>
+    <db.connector.version>1.14.0</db.connector.version>
+    <apikit.version>1.11.3</apikit.version>
+    <secure-properties.connector.version>1.2.5</secure-properties.connector.version>
+    <postgresql.driver.version>42.7.3</postgresql.driver.version>
+  </properties>
+
+  <dependencies>
+
+    <!-- HTTP Listener + HTTP Requester config (see samples/mule/https-listener.xml).
+         Public inbound endpoint AND used for any plain-HTTP outbound calls. -->
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-http-connector</artifactId>
+      <version>${http.connector.version}</version>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+
+    <!-- APIkit - scaffolds flows from the RAML contract (samples/raml/check-in-papi.raml)
+         and does request validation before your flow logic runs. -->
+    <dependency>
+      <groupId>org.mule.modules</groupId>
+      <artifactId>mule-apikit-module</artifactId>
+      <version>${apikit.version}</version>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+
+    <!-- Web Service Consumer - calls Flights Management (on-prem SOAP, mutual TLS).
+         Pairs with the mutual-tls tls:context in samples/mule/mutual-tls.xml. -->
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-ws-connector</artifactId>
+      <version>${ws.connector.version}</version>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+
+    <!-- Database connector - talks to Passenger Data (on-prem PostgreSQL). -->
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-db-connector</artifactId>
+      <version>${db.connector.version}</version>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+
+    <!-- Plain JDBC driver required by the DB connector above to actually speak
+         Postgres's wire protocol - the connector alone isn't enough. -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.driver.version}</version>
+    </dependency>
+
+    <!-- Secure Properties module - decrypts secure-${mule.env}.yaml values
+         (keystore/truststore passwords, DB credentials) at runtime.
+         See concepts/13-properties-secrets.md. -->
+    <dependency>
+      <groupId>com.mulesoft.modules</groupId>
+      <artifactId>mule-secure-configuration-property-extension</artifactId>
+      <version>${secure-properties.connector.version}</version>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+
+    <!-- MUnit runner + tools - test scope only, never shipped in the deployed
+         artifact. munit-tools adds mock-when / assert-that used in
+         samples/munit/checkin-test.xml. -->
+    <dependency>
+      <groupId>com.mulesoft.munit</groupId>
+      <artifactId>munit-runner</artifactId>
+      <version>${munit.version}</version>
+      <classifier>mule-plugin</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.mulesoft.munit</groupId>
+      <artifactId>munit-tools</artifactId>
+      <version>${munit.version}</version>
+      <classifier>mule-plugin</classifier>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+
+      <!--
+        mule-maven-plugin - THE Mule-specific plugin. <extensions>true</extensions>
+        lets it hook into the package/deploy phases so `mvn package` produces the
+        mule-application artifact and `mvn deploy -DmuleDeploy` pushes it to
+        CloudHub (see samples/maven/pom-cloudhub-deploy-snippet.xml for the full
+        cloudHubDeployment block, and concepts/18-maven-build.md).
+      -->
+      <plugin>
+        <groupId>org.mule.tools.maven</groupId>
+        <artifactId>mule-maven-plugin</artifactId>
+        <version>${mule.maven.plugin.version}</version>
+        <extensions>true</extensions>
+      </plugin>
+
+      <!--
+        munit-maven-plugin - binds MUnit tests to `mvn test`/`mvn verify` and can
+        enforce a minimum coverage percentage, failing the build below it.
+        This is what makes `mvn clean verify` in concepts/15-deploy-operate.md's
+        CI/CD sketch actually run and gate on MUnit, not just compile.
+      -->
+      <plugin>
+        <groupId>com.mulesoft.munit.tools</groupId>
+        <artifactId>munit-maven-plugin</artifactId>
+        <version>${munit.extensions.maven.plugin.version}</version>
+        <executions>
+          <execution>
+            <id>test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+              <goal>coverage-report</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <coverage>
+            <runCoverage>true</runCoverage>
+            <failBuild>true</failBuild>
+            <requiredApplicationCoverage>80</requiredApplicationCoverage>
+          </coverage>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+
+  <!--
+    MuleSoft's own repositories - connectors (mule-http-connector, mule-db-connector,
+    mule-ws-connector, etc.) and the mule-maven-plugin itself are NOT on plain
+    Maven Central; they live here. Without these, dependency resolution falls
+    through to Central, finds nothing, and the build fails.
+  -->
+  <repositories>
+    <repository>
+      <id>mulesoft-releases</id>
+      <name>MuleSoft Releases Repository</name>
+      <url>https://repository.mulesoft.org/releases/</url>
+      <layout>default</layout>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>mulesoft-releases</id>
+      <name>MuleSoft Releases Repository</name>
+      <url>https://repository.mulesoft.org/releases/</url>
+      <layout>default</layout>
+    </pluginRepository>
+  </pluginRepositories>
+
+</project>

@@ -11,8 +11,8 @@
 Check `samples/mule/https-listener.xml` — keystore path/password already use `${secure::keystore.password}`, not hardcoded values.
 ![Lab14-1](../images/screenshots/lab14-step01-parameterized-xml.png)
 
-### 2. Add the mule-maven-plugin to pom.xml
-Merge `samples/maven/pom-cloudhub-deploy-snippet.xml` into your project's `pom.xml` under `<build><plugins>`.
+### 2. Build a real pom.xml from the reference
+Start from `samples/maven/pom-reference.xml` (packaging, connectors, MuleSoft repositories, `mule-maven-plugin`, `munit-maven-plugin` — every block commented with where it's used), then merge the CloudHub deploy block from `samples/maven/pom-cloudhub-deploy-snippet.xml` into the `mule-maven-plugin`'s `<configuration>`.
 ![Lab14-2](../images/screenshots/lab14-step02-pom-plugin.png)
 
 ### 3. Run the build + tests
