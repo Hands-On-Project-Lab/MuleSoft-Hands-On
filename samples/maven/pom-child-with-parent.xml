@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  check-in-papi - APPLICATION POM after Lab 15
+  ============================================================================
+  The "after" picture: samples/maven/pom-reference.xml is ~470 lines and
+  explains everything; this is what's LEFT once the shared parts move to
+  anyairline-mule-parent and anyairline-mule-bom.
+
+  Gone from here: plugin versions, connector versions, repositories,
+  pluginRepositories, distributionManagement, dev/qa/prod profiles,
+  the whole cloudHubDeployment block.
+
+  Still here: this app's identity, its API spec coordinates, its connectors.
+  ============================================================================
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.anyairline</groupId>
+    <artifactId>anyairline-mule-parent</artifactId>
+    <version>1.0.0</version>
+  </parent>
+
+  <artifactId>check-in-papi</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>mule-application</packaging>
+  <name>Check-In PAPI</name>
+  <!-- groupId inherited from the parent -->
+
+  <properties>
+    <!-- SINGLE SOURCE OF TRUTH for the published spec. Referenced by the
+         Exchange dependency below AND filtered into config-${mule.env}.yaml.
+         Bump it once; nothing else changes. -->
+    <api.groupId>6ebe1206-ddb1-4f2a-b06e-dca3244ebbad</api.groupId>
+    <api.artifactId>check-in-papi</api.artifactId>
+    <api.version>1.0.3</api.version>
+  </properties>
+
+  <build>
+    <!-- Filtering: @...@ is substituted here, ${...} is left for Mule.
+         The delimiter configuration lives in the parent's pluginManagement. -->
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+
+    <plugins>
+      <!-- No <version>, no <configuration>: all inherited. -->
+      <plugin>
+        <groupId>org.mule.tools.maven</groupId>
+        <artifactId>mule-maven-plugin</artifactId>
+        <extensions>true</extensions>
+      </plugin>
+      <plugin>
+        <groupId>com.mulesoft.munit.tools</groupId>
+        <artifactId>munit-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencies>
+    <!-- The published RAML, pulled from Exchange using the properties above -->
+    <dependency>
+      <groupId>${api.groupId}</groupId>
+      <artifactId>${api.artifactId}</artifactId>
+      <version>${api.version}</version>
+      <classifier>raml</classifier>
+      <type>zip</type>
+    </dependency>
+
+    <!-- Connectors: no <version> - the BOM decides -->
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-http-connector</artifactId>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.mule.modules</groupId>
+      <artifactId>mule-apikit-module</artifactId>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-wsc-connector</artifactId>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-db-connector</artifactId>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.mulesoft.modules</groupId>
+      <artifactId>mule-secure-configuration-property-extension</artifactId>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+    <dependency>
+      <groupId>com.mulesoft.munit</groupId>
+      <artifactId>munit-runner</artifactId>
+      <classifier>mule-plugin</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.mulesoft.munit</groupId>
+      <artifactId>munit-tools</artifactId>
+      <classifier>mule-plugin</classifier>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Need a newer version than the BOM says, for THIS app only?
+         Declare <version> here; a local version always wins over a managed one.
+    <dependency>
+      <groupId>org.mule.connectors</groupId>
+      <artifactId>mule-db-connector</artifactId>
+      <version>1.14.9</version>
+      <classifier>mule-plugin</classifier>
+    </dependency>
+    -->
+  </dependencies>
+</project>

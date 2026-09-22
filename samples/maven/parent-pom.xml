@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  anyairline-mule-parent - PARENT POM (packaging: pom)
+  ============================================================================
+  Holds everything that is IDENTICAL across check-in-papi, flights-sapi and
+  any future AnyAirline Mule app. Extracted from samples/maven/pom-reference.xml:
+  Sections 4 (plugins), 5/6 (repositories), 7 (distribution), 8 (profiles).
+
+  What stays in the child app (see pom-child-with-parent.xml):
+    its own GAV, applicationName, api.* coordinates, the connectors it uses.
+
+  Install it before building any child:
+    mvn clean install          (local)
+    mvn deploy                 (publish to Exchange for the team)
+  ============================================================================
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.anyairline</groupId>
+  <artifactId>anyairline-mule-parent</artifactId>
+  <version>1.0.0</version>
+  <!-- pom = produces no artifact of its own, only configuration to inherit -->
+  <packaging>pom</packaging>
+  <name>AnyAirline Mule Parent POM</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- Runtime + tooling. Pinned here = same build on a laptop and on CI. -->
+    <app.runtime>4.6.0</app.runtime>
+    <mule.maven.plugin.version>4.1.0</mule.maven.plugin.version>
+    <munit.extensions.maven.plugin.version>1.1.0</munit.extensions.maven.plugin.version>
+    <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
+    <munit.coverage.required>80</munit.coverage.required>
+
+    <!-- Deployment defaults; overridden by the profiles below -->
+    <env>dev</env>
+    <ch.workers>1</ch.workers>
+    <ch.worker.type>Micro</ch.worker.type>
+    <ch.region>us-east-1</ch.region>
+  </properties>
+
+  <!-- ==========================================================================
+       Import the BOM so every child inherits managed connector versions and can
+       declare dependencies without <version>.
+       ========================================================================== -->
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.anyairline</groupId>
+        <artifactId>anyairline-mule-bom</artifactId>
+        <version>1.0.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <!-- ========================================================================
+         pluginManagement pins VERSIONS + shared CONFIG. Children re-declare the
+         plugin in <build><plugins> with no version to activate it.
+         ======================================================================== -->
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.mule.tools.maven</groupId>
+          <artifactId>mule-maven-plugin</artifactId>
+          <version>${mule.maven.plugin.version}</version>
+          <extensions>true</extensions>
+          <configuration>
+            <deploymentTimeout>600000</deploymentTimeout>
+            <skipDeploymentVerification>false</skipDeploymentVerification>
+            <cloudHubDeployment>
+              <uri>https://anypoint.mulesoft.com</uri>
+              <muleVersion>${app.runtime}</muleVersion>
+              <username>${env.ANYPOINT_USERNAME}</username>
+              <password>${env.ANYPOINT_PASSWORD}</password>
+              <environment>${env}</environment>
+              <!-- applicationName is app-specific: the CHILD overrides it -->
+              <applicationName>${project.artifactId}-${env}</applicationName>
+              <region>${ch.region}</region>
+              <workers>${ch.workers}</workers>
+              <workerType>${ch.worker.type}</workerType>
+              <monitoringEnabled>true</monitoringEnabled>
+              <properties>
+                <mule.env>${env}</mule.env>
+              </properties>
+              <securedProperties>
+                <mule.key>${env.MULE_KEY}</mule.key>
+              </securedProperties>
+            </cloudHubDeployment>
+          </configuration>
+        </plugin>
+
+        <plugin>
+          <groupId>com.mulesoft.munit.tools</groupId>
+          <artifactId>munit-maven-plugin</artifactId>
+          <version>${munit.extensions.maven.plugin.version}</version>
+          <executions>
+            <execution>
+              <id>test</id>
+              <phase>test</phase>
+              <goals>
+                <goal>test</goal>
+                <goal>coverage-report</goal>
+              </goals>
+            </execution>
+          </executions>
+          <configuration>
+            <coverage>
+              <runCoverage>true</runCoverage>
+              <failBuild>true</failBuild>
+              <requiredApplicationCoverage>${munit.coverage.required}</requiredApplicationCoverage>
+            </coverage>
+          </configuration>
+        </plugin>
+
+        <!-- ================================================================
+             CRITICAL: @...@ delimiters only.
+             With the default ${...} delimiters, Maven would try to resolve
+             Mule's own ${secure::db.password} placeholders at build time and
+             blank them out. See concepts/19, section 3.
+             ================================================================ -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>${maven.resources.plugin.version}</version>
+          <configuration>
+            <useDefaultDelimiters>false</useDefaultDelimiters>
+            <delimiters>
+              <delimiter>@</delimiter>
+            </delimiters>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+  <repositories>
+    <repository>
+      <id>mulesoft-releases</id>
+      <name>MuleSoft Releases Repository</name>
+      <url>https://repository.mulesoft.org/releases/</url>
+      <layout>default</layout>
+    </repository>
+    <repository>
+      <id>anypoint-exchange-v3</id>
+      <name>Anypoint Exchange</name>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+      <layout>default</layout>
+    </repository>
+    <!-- MuleSoft EE (paid connectors). 401 without a matching <server> id in
+         ~/.m2/settings.xml - see samples/maven/settings-reference.xml -->
+    <!--
+    <repository>
+      <id>MuleRepository</id>
+      <name>MuleSoft EE Repository</name>
+      <url>https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/</url>
+      <layout>default</layout>
+    </repository>
+    -->
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>mulesoft-releases</id>
+      <name>MuleSoft Releases Repository</name>
+      <url>https://repository.mulesoft.org/releases/</url>
+      <layout>default</layout>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <!-- Where `mvn deploy` (without -DmuleDeploy) publishes the parent/BOM/apps.
+       Replace ORG_ID with your Anypoint organization ID. -->
+  <distributionManagement>
+    <repository>
+      <id>anypoint-exchange-v3</id>
+      <name>Exchange Repository</name>
+      <url>https://maven.anypoint.mulesoft.com/api/v3/organizations/ORG_ID/maven</url>
+      <layout>default</layout>
+    </repository>
+  </distributionManagement>
+
+  <profiles>
+    <profile>
+      <id>dev</id>
+      <activation><activeByDefault>true</activeByDefault></activation>
+      <properties>
+        <env>dev</env>
+        <ch.workers>1</ch.workers>
+        <ch.worker.type>Micro</ch.worker.type>
+      </properties>
+    </profile>
+    <profile>
+      <id>qa</id>
+      <properties>
+        <env>qa</env>
+        <ch.workers>1</ch.workers>
+        <ch.worker.type>Small</ch.worker.type>
+      </properties>
+    </profile>
+    <profile>
+      <id>prod</id>
+      <properties>
+        <env>prod</env>
+        <ch.workers>2</ch.workers>
+        <ch.worker.type>Medium</ch.worker.type>
+      </properties>
+    </profile>
+  </profiles>
+</project>

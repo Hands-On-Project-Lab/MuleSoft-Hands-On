@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  ~/.m2/settings.xml - REFERENCE TEMPLATE. NEVER COMMIT A FILLED-IN COPY.
+  ============================================================================
+  pom.xml is version-controlled, so it describes the PROJECT.
+  settings.xml is per-machine, so it describes the PERSON building it:
+  credentials, mirrors, proxies.
+
+  Each <server><id> MUST match the <repository><id> (or
+  <distributionManagement><repository><id>) in anyairline-mule-parent.
+  A mismatch gives 401 Unauthorized with no other clue.
+
+  Encrypt instead of storing plaintext:
+    mvn --encrypt-master-password     -> ~/.m2/settings-security.xml
+    mvn --encrypt-password
+  ============================================================================
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <servers>
+    <!-- MuleSoft ENTERPRISE repository. Only needed for paid/EE connectors.
+         Matches the commented-out <repository id="MuleRepository"> in the parent. -->
+    <server>
+      <id>MuleRepository</id>
+      <username>YOUR_EE_NEXUS_USERNAME</username>
+      <password>{ENCRYPTED}</password>
+    </server>
+
+    <!-- Anypoint Exchange. Prefer a Connected App over a personal account:
+         not tied to a person, and MFA doesn't break CI.
+         Access Management > Connected Apps, scope "Exchange Contributor"
+         (publish) and/or "Deploy Applications". -->
+    <server>
+      <id>anypoint-exchange-v3</id>
+      <username>~~~Client~~~</username>
+      <password>CLIENT_ID~?~CLIENT_SECRET</password>
+    </server>
+  </servers>
+
+  <profiles>
+    <profile>
+      <id>anyairline-local</id>
+      <properties>
+        <!-- Used by distributionManagement in the parent POM -->
+        <anypoint.orgId>YOUR_ORG_ID</anypoint.orgId>
+      </properties>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>anyairline-local</activeProfile>
+  </activeProfiles>
+
+  <!-- ==========================================================================
+       MIRROR GOTCHA (concepts/18-maven-build.md): mirrorOf="*" does NOT fall
+       back to Central or to repository.mulesoft.org. If you front everything
+       with Nexus, that Nexus group must proxy BOTH, or connector resolution
+       fails with "could not be resolved" on a perfectly correct pom.xml.
+       Safer form, which leaves MuleSoft repos alone:
+       ==========================================================================
+  <mirrors>
+    <mirror>
+      <id>nexus</id>
+      <mirrorOf>*,!mulesoft-releases,!anypoint-exchange-v3,!MuleRepository</mirrorOf>
+      <url>https://nexus.internal.anyairline.com/repository/maven-public/</url>
+    </mirror>
+  </mirrors>
+  -->
+
+  <!-- Deploy-time secrets stay OS environment variables, read as ${env.NAME}:
+         ANYPOINT_USERNAME / ANYPOINT_PASSWORD  (or the Connected App pair)
+         MULE_KEY                               (Secure Properties key)
+       See samples/maven/pom-reference.xml Section 9. -->
+</settings>

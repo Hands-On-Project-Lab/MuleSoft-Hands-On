@@ -1,4 +1,4 @@
-# 13 · Properties, Environments & Secure Properties *(added)*
+# 13 · Properties, Environments & Secure Properties _(added)_
 
 ## Per-environment config
 
@@ -11,7 +11,7 @@ src/main/resources/
 ```
 
 ```xml
-<configuration-properties file="config-${mule.env}.yaml"/>
+<configuration-properties file="config-${mule.env}.yaml"/><!--  -->
 <secure-properties:config name="Secure_Props" file="secure-${mule.env}.yaml" key="${mule.key}">
   <secure-properties:encrypt algorithm="Blowfish" />
 </secure-properties:config>
@@ -19,6 +19,8 @@ src/main/resources/
 
 `mule.env` = `dev`/`test`/`prod`, set in Studio run config or in Runtime Manager properties.
 `mule.key` = encryption key, passed **at runtime only**, never committed.
+
+> Externalising to a property file removes hardcoding, but not _duplication_ — values a Maven dependency and the runtime both need (the API spec's groupId/artifactId/version) still appear twice. Maven resource filtering collapses them to one; because Mule and Maven both use `${…}`, filtering must be switched to `@…@` delimiters first. See [19 Parameterization, Parent POM &amp; BOM](19-parent-pom-bom-parameterization.md).
 
 ## Using them
 
@@ -42,11 +44,11 @@ Client secret, keystore password, truststore password, DB password, SOAP credent
 
 ## Env matrix
 
-| Setting | dev | test | prod |
-|---|---|---|---|
-| Load balancer | SLB | SLB | DLB |
-| Cert | self-signed | self-signed | CA-signed |
-| Credentials | dev org creds | test | prod |
-| `api.id` | dev instance | test | prod |
+| Setting       | dev           | test        | prod      |
+| ------------- | ------------- | ----------- | --------- |
+| Load balancer | SLB           | SLB         | DLB       |
+| Cert          | self-signed   | self-signed | CA-signed |
+| Credentials   | dev org creds | test        | prod      |
+| `api.id`      | dev instance  | test        | prod      |
 
 **Used by** [06 Autodiscovery](06-autodiscovery.md) · **Do it →** [Lab 05](../labs/lab-05-autodiscovery-secure-props.md)

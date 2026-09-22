@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  anyairline-mule-bom - BILL OF MATERIALS (packaging: pom)
+  ============================================================================
+  Declares WHICH VERSION of every connector/module AnyAirline apps use.
+  Declares nothing on the classpath - <dependencyManagement> is a rulebook,
+  not a dependency list (see the table in concepts/18-maven-build.md).
+
+  Versions mirror samples/maven/pom-reference.xml Section 2, moved here so an
+  upgrade is one edit in one file instead of one per API.
+
+  Consumed by anyairline-mule-parent via <scope>import</scope>.
+  Install first:  mvn clean install
+  ============================================================================
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.anyairline</groupId>
+  <artifactId>anyairline-mule-bom</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+  <name>AnyAirline Mule Dependencies BOM</name>
+
+  <properties>
+    <http.connector.version>1.9.0</http.connector.version>
+    <ws.connector.version>1.4.0</ws.connector.version>
+    <db.connector.version>1.14.0</db.connector.version>
+    <apikit.version>1.11.3</apikit.version>
+    <secure-properties.connector.version>1.2.5</secure-properties.connector.version>
+    <objectstore.connector.version>1.2.2</objectstore.connector.version>
+    <postgresql.driver.version>42.7.3</postgresql.driver.version>
+    <munit.version>3.3.4</munit.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- HTTP Listener (public inbound) + HTTP Requester -->
+      <dependency>
+        <groupId>org.mule.connectors</groupId>
+        <artifactId>mule-http-connector</artifactId>
+        <version>${http.connector.version}</version>
+        <classifier>mule-plugin</classifier>
+      </dependency>
+
+      <!-- APIkit: RAML-driven routing + request validation -->
+      <dependency>
+        <groupId>org.mule.modules</groupId>
+        <artifactId>mule-apikit-module</artifactId>
+        <version>${apikit.version}</version>
+        <classifier>mule-plugin</classifier>
+      </dependency>
+
+      <!-- Web Service Consumer: Flights Management (on-prem SOAP, mutual TLS) -->
+      <dependency>
+        <groupId>org.mule.connectors</groupId>
+        <artifactId>mule-wsc-connector</artifactId>
+        <version>${ws.connector.version}</version>
+        <classifier>mule-plugin</classifier>
+      </dependency>
+
+      <!-- Database connector: Passenger Data (on-prem PostgreSQL) -->
+      <dependency>
+        <groupId>org.mule.connectors</groupId>
+        <artifactId>mule-db-connector</artifactId>
+        <version>${db.connector.version}</version>
+        <classifier>mule-plugin</classifier>
+      </dependency>
+
+      <!-- Plain JDBC driver: no mule-plugin classifier -->
+      <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${postgresql.driver.version}</version>
+      </dependency>
+
+      <!-- Secure Properties: decrypts secure-${mule.env}.yaml with MULE_KEY -->
+      <dependency>
+        <groupId>com.mulesoft.modules</groupId>
+        <artifactId>mule-secure-configuration-property-extension</artifactId>
+        <version>${secure-properties.connector.version}</version>
+        <classifier>mule-plugin</classifier>
+      </dependency>
+
+      <!-- Object Store v2: idempotency / token caching -->
+      <dependency>
+        <groupId>org.mule.connectors</groupId>
+        <artifactId>mule-objectstore-connector</artifactId>
+        <version>${objectstore.connector.version}</version>
+        <classifier>mule-plugin</classifier>
+      </dependency>
+
+      <!-- MUnit: test scope, never shipped -->
+      <dependency>
+        <groupId>com.mulesoft.munit</groupId>
+        <artifactId>munit-runner</artifactId>
+        <version>${munit.version}</version>
+        <classifier>mule-plugin</classifier>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.mulesoft.munit</groupId>
+        <artifactId>munit-tools</artifactId>
+        <version>${munit.version}</version>
+        <classifier>mule-plugin</classifier>
+        <scope>test</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+</project>

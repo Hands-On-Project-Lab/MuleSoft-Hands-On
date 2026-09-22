@@ -1,0 +1,53 @@
+# ============================================================================
+# config-dev.yaml - after Lab 15 (goes in src/main/resources/)
+# ============================================================================
+#   @...@   -> replaced by MAVEN at build time (resource filtering)
+#   ${...}  -> resolved by the MULE RUNTIME at deployment time
+#
+# This only works with <useDefaultDelimiters>false</useDefaultDelimiters> and
+# <delimiter>@</delimiter> on maven-resources-plugin. With Maven's default
+# ${...} delimiters, every secure:: placeholder below would be blanked out.
+#
+# Verify:  mvn process-resources && cat target/classes/config-dev.yaml
+# ============================================================================
+
+env: "@env@"
+
+# Comes from <properties> in pom.xml - NOT written twice any more.
+# The same three values drive the Exchange RAML dependency.
+api:
+  groupId: "@api.groupId@"
+  artifactId: "@api.artifactId@"
+  version: "@api.version@"
+  # Autodiscovery ID is per-ENVIRONMENT, not per-build, so it stays a runtime
+  # secure property - see concepts/06-autodiscovery.md and 13-properties-secrets.md
+  id: "${secure::api.autodiscovery.id}"
+
+https:
+  host: "0.0.0.0"
+  port: "8082"
+  basePath: "/api"
+
+# Keystore path is config; the password is never in this file.
+tls:
+  keystore:
+    path: "keystores/checkin-dev.jks"
+    password: "${secure::keystore.password}"
+    keyPassword: "${secure::keystore.key.password}"
+
+# Flights Management - on-prem SOAP, mutual TLS
+flights:
+  wsdl: "https://flights-dev.internal.anyairline.com/FlightsService?wsdl"
+  service: "FlightsService"
+  port: "FlightsPort"
+
+# Passenger Data - on-prem PostgreSQL
+db:
+  host: "pg-dev.internal.anyairline.com"
+  port: "5432"
+  database: "passengers"
+  user: "${secure::db.user}"
+  password: "${secure::db.password}"
+
+logging:
+  level: "DEBUG"

@@ -73,15 +73,15 @@ A minimal `pom.xml`:
 </project>
 ```
 
-`<properties>` are build-time variables (referenced as `${maven.compiler.target}`) — change a version once instead of in ten places. Every `pom.xml` implicitly inherits from Maven's built-in **Super POM** (default folder layout `src/main/java`, Maven Central as a default remote repo, default plugin bindings) — `mvn help:effective-pom` shows the fully merged result. **Credentials never go here** — they belong in `~/.m2/settings.xml`, since `pom.xml` is checked into version control.
+`<properties>` are build-time variables (referenced as `${maven.compiler.target}`) — change a version once instead of in ten places. Every `pom.xml` implicitly inherits from Maven's built-in **Super POM** (default folder layout `src/main/java`, Maven Central as a default remote repo, default plugin bindings) — `mvn help:effective-pom` shows the fully merged result. **Credentials never go here** — they belong in `~/.m2/settings.xml`, since `pom.xml` is checked into version control.Credentials for **private** repositories — the MuleSoft EE repo, a company Nexus, Exchange — go in `settings.xml` under a `<server>` whose `<id>` matches the `<repository>` id exactly; a mismatch surfaces only as a bare 401. Template: [`samples/maven/settings-reference.xml`](../samples/maven/settings-reference.xml).
 
 #### Three kinds of `${...}` — don't mix them up
 
 | Syntax             | Comes from                                                                         | Example in this course                             |
-| ------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------- | 
-| `${some.property}` | `<properties>` in the pom, a profile, or `-Dsome.property=...` on the command line | `${mule.maven.plugin.version}`, `${env}`           |
-| `${env.NAME}`      | An **operating-system environment variable** called `NAME`                         | `${env.ANYPOINT_PASSWORD}`, `${env.MULE_KEY}`      |   
-| `${project.xxx}`   | The POM itself (Maven's built-in model)                                            | `${project.version}`, `${project.build.directory}` |
+| ------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------- | --- | --- |
+| `${some.property}` | `<properties>` in the pom, a profile, or `-Dsome.property=...` on the command line | `${mule.maven.plugin.version}`, `${env}`           |     |     |
+| `${env.NAME}`      | An **operating-system environment variable** called `NAME`                         | `${env.ANYPOINT_PASSWORD}`, `${env.MULE_KEY}`      |     |     |
+| `${project.xxx}`   | The POM itself (Maven's built-in model)                                            | `${project.version}`, `${project.build.directory}` |     |     |
 
 `${env}` (no dot) is a **Maven property** set by `-Denv=dev` or a profile; `${env.ANYPOINT_PASSWORD}` (with a dot) reads the **shell** variable. They look alike and are unrelated. A `-D` on the command line **overrides** the same property declared in the pom or a profile, which is exactly why `-Denv=qa` works on top of a default of `dev`.
 
@@ -152,6 +152,8 @@ Scope table:
 | `runtime`           | No         | Yes     | Yes        | Needed only to run (e.g. JDBC driver)              |
 | `import`            | —          | —       | —          | Only inside`dependencyManagement`, to import a BOM |
 
+`import` is the mechanism behind a **BOM** — a `pom`-packaged artifact carrying only `<dependencyManagement>`, so consuming projects declare connectors with no `<version>` at all. See [19 Parameterization, Parent POM &amp; BOM](19-parent-pom-bom-parameterization.md).
+
 Security rule of thumb: narrowest scope that works — smaller attack surface, smaller artifact.
 
 **Mule-specific:** `<classifier>mule-plugin</classifier>` makes the runtime load a connector as an **isolated plugin** (its own classloader). The JDBC driver has no classifier because it is a plain jar, not a Mule plugin.
@@ -172,6 +174,7 @@ Default bindings for `jar` packaging:
 | `deploy`       | `deploy:deploy`        | Uploads to remote repo |
 
 `pluginManagement` pins **versions** only — without pinning, different machines/CI agents can resolve different default plugin versions, causing inconsistent builds. Pin in `pluginManagement`; add custom bindings under `<build><plugins><executions>`.
+Once a second API exists, that pinning belongs in a **parent POM** rather than being copy-pasted — [19](19-parent-pom-bom-parameterization.md) does that extraction.
 
 Two rules that bite people:
 
@@ -359,3 +362,4 @@ Deploying successfully does not mean the app can reach Flights Management (SOAP,
 | Deploy OK, on-prem calls time out                            | No VPC/VPN or firewall closed                                                                      |
 
 **Do it →** [Lab 14](../labs/lab-14-maven-parameterize-deploy.md)
+**Next →** [19 Parameterization, Parent POM &amp; BOM](19-parent-pom-bom-parameterization.md)

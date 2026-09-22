@@ -20,6 +20,14 @@
     mvn clean deploy -DmuleDeploy -Pprod           -> deploy to PROD
     mvn clean deploy -DmuleDeploy -Denv=qa         -> override env name directly
 
+  This file is deliberately SELF-CONTAINED for teaching - every section in one
+  place. Once a second Mule app exists, sections 4-8 should move to a parent POM
+  and section 2's connector versions to a BOM:
+      samples/maven/parent-pom.xml
+      samples/maven/bom-pom.xml
+      samples/maven/pom-child-with-parent.xml   <- what's left of this file
+  See concepts/19-parent-pom-bom-parameterization.md.
+
   Required OS environment variables (never commit them):
     ANYPOINT_USERNAME, ANYPOINT_PASSWORD  (or the Connected App pair, see Section 9)
     MULE_KEY                               (Secure Properties encryption key)
