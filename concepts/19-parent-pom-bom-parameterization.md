@@ -5,19 +5,17 @@
 
 [18](18-maven-build.md) covered one app's `pom.xml`. This covers what breaks once there are three apps: the same plugin block copy-pasted three times, and the same API version written in both `pom.xml` and `config-${mule.env}.yaml`.
 
-<br/>
 ```mermaid
 
 flowchart TB
-BOM[mule-dependencies-bom<br/>packaging: pom<br/>versions only] -->|import scope| PARENT[anyairline-mule-parent<br/>packaging: pom<br/>plugins, repos, profiles]
+    BOM["mule-dependencies-bom<br/>packaging: pom<br/>versions only"] -->|import scope| PARENT["anyairline-mule-parent<br/>packaging: pom<br/>plugins, repos, profiles"]
 
-    PARENT -->|inheritance| A[check-in-papi<br/>mule-application]
-    PARENT --> B[flights-sapi<br/>mule-application]
-    PARENT --> C[booking-eapi<br/>mule-application]
+    PARENT -->|inheritance| A["check-in-papi<br/>mule-application"]
+    PARENT --> B["flights-sapi<br/>mule-application"]
+    PARENT --> C["booking-eapi<br/>mule-application"]
 
-    A -->|resource filtering| CFG[config-dev.yaml<br/>@api.version@ replaced at build]
-
-````
+    A -->|resource filtering| CFG["config-dev.yaml<br/>@api.version@ replaced at build"]
+```
 
 ## 1 · The POM is the unit of work
 
@@ -194,12 +192,12 @@ Do them in that order: steps 3 and 4 are much easier once nothing app-specific i
 
 ## Common failures
 
-| Symptom                                               | Cause                                                                     |
-| ----------------------------------------------------- | ------------------------------------------------------------------------- | --- |
-| `${secure::db.password}` is empty in `target/classes` | filtering ran with default `${}` delimiters                               |     |
-| Studio shows the literal`@api.version@`               | Studio runs unfiltered`src/main/`; run `mvn process-resources`            |
-| Child build can't find the parent                     | parent not`mvn install`ed / not published to Exchange                     |
-| `version is required` on a BOM-managed dependency     | BOM imported outside`<dependencyManagement>`, or wrong `<type>pom</type>` |
-| 401 from the EE repo                                  | no`<server>` in `settings.xml` with a matching `<id>`                     |
+| Symptom                                               | Cause                                                                 |
+| ----------------------------------------------------- | --------------------------------------------------------------------- |
+| `${secure::db.password}` is empty in `target/classes` | Filtering ran with default `${}` delimiters                           |
+| Studio shows the literal `@api.version@`              | Studio runs unfiltered `src/main/`; run `mvn process-resources`       |
+| Child build can't find the parent                     | Parent not `mvn install`ed / not published to Exchange                |
+| `version is required` on a BOM-managed dependency     | BOM imported outside `<dependencyManagement>`, or wrong `<type>pom</type>` |
+| 401 from the EE repo                                  | No `<server>` in `settings.xml` with a matching `<id>`                |
 
 **Do it →** [Lab 15](../labs/lab-15-parent-pom-bom.md)
