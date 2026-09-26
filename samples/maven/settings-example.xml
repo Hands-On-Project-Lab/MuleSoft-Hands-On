@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  settings-example.xml  -  TEMPLATE for ~/.m2/settings.xml
+  ============================================================================
+  WHAT: settings.xml is a MACHINE-level file, separate from pom.xml. It holds
+        things that must NEVER be committed to git: server credentials,
+        mirrors, proxies. pom.xml is shared and versioned; settings.xml is
+        local to each developer's or each CI runner's machine.
+  WHERE THIS GOES:
+    - Linux/macOS: ~/.m2/settings.xml
+    - Windows:     %USERPROFILE%\.m2\settings.xml
+    - CI runners:  usually written from secrets at pipeline start, never
+                    checked into the repo itself
+  This file is a TEMPLATE. Copy it to the path above, fill in real values
+  (or better, reference environment variables via your CI secret manager),
+  and do NOT commit the filled-in version. It is not consumed automatically
+  by this repo - it configures Maven itself for this machine.
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+
+  <!-- Where Maven caches downloaded artifacts. Optional - defaults to
+       ~/.m2/repository if omitted. Override only if you want the cache on a
+       different disk/drive. -->
+  <!-- <localRepository>/path/to/custom/repo</localRepository> -->
+
+  <!-- ==========================================================================
+       SERVERS - credentials keyed by an <id> that a pom.xml <repository>,
+       <pluginRepository>, or <distributionManagement> block references by
+       the SAME id. Maven matches them by id, not by URL.
+       ========================================================================== -->
+  <servers>
+
+    <!-- Matches <id>mulesoft-releases</id> in pom.xml's <repositories> /
+         <pluginRepositories> IF that repo requires authentication for your
+         org (public releases usually don't, Nexus-proxied ones often do). -->
+    <server>
+      <id>mulesoft-releases</id>
+      <username>${env.MULESOFT_REPO_USER}</username>
+      <password>${env.MULESOFT_REPO_PASSWORD}</password>
+    </server>
+
+    <!-- Matches <id>anypoint-exchange-v3</id> if you consume shared Exchange
+         assets (see the commented-out repository block in pom-reference.xml).
+         Anypoint Exchange authenticates via a Connected App's client id /
+         secret used as username / password here. -->
+    <server>
+      <id>anypoint-exchange-v3</id>
+      <username>${env.ANYPOINT_CLIENT_ID}</username>
+      <password>${env.ANYPOINT_CLIENT_SECRET}</password>
+    </server>
+
+    <!-- Example for a company-managed Nexus/Artifactory mirror, if your org
+         proxies Central + MuleSoft + Exchange behind one login. -->
+    <!--
+    <server>
+      <id>company-nexus</id>
+      <username>${env.NEXUS_USER}</username>
+      <password>${env.NEXUS_PASSWORD}</password>
+    </server>
+    -->
+
+  </servers>
+
+  <!-- ==========================================================================
+       MIRRORS - redirect ALL requests for a given repo (or "*") to one URL.
+       Common in a company network: one Nexus front door proxies Central,
+       MuleSoft releases, and Exchange, so developers configure one mirror
+       instead of everyone hitting the public internet.
+       ========================================================================== -->
+  <mirrors>
+    <!--
+    <mirror>
+      <id>company-nexus</id>
+      <mirrorOf>*</mirrorOf>
+      <url>https://nexus.mycompany.com/repository/maven-public/</url>
+    </mirror>
+    -->
+    <!-- GOTCHA (see concepts/18-maven-build.md): mirrorOf="*" does NOT
+         automatically also reach Central or MuleSoft's repo - the mirror
+         itself must proxy them, or resolution fails with "not found" even
+         though the pom.xml repository declarations look correct. -->
+  </mirrors>
+
+  <!-- ==========================================================================
+       PROXIES - only needed behind a corporate HTTP(S) proxy.
+       ========================================================================== -->
+  <proxies>
+    <!--
+    <proxy>
+      <id>corporate-proxy</id>
+      <active>true</active>
+      <protocol>https</protocol>
+      <host>proxy.mycompany.com</host>
+      <port>8080</port>
+      <username>${env.PROXY_USER}</username>
+      <password>${env.PROXY_PASSWORD}</password>
+      <nonProxyHosts>localhost|127.0.0.1|*.mycompany.com</nonProxyHosts>
+    </proxy>
+    -->
+  </proxies>
+
+  <!-- ==========================================================================
+       PROFILES (settings.xml profiles, NOT pom.xml profiles) - can inject
+       properties or activate extra repositories machine-wide, independent of
+       which project you're building. Different from the <profiles> in
+       pom-reference.xml, which are per-PROJECT (dev/qa/prod deploy sizing).
+       Rarely needed for this course; shown for completeness.
+       ========================================================================== -->
+  <profiles>
+    <!--
+    <profile>
+      <id>default-props</id>
+      <properties>
+        <some.machine.wide.property>value</some.machine.wide.property>
+      </properties>
+    </profile>
+    -->
+  </profiles>
+
+  <!-- <activeProfiles><activeProfile>default-props</activeProfile></activeProfiles> -->
+
+</settings>
+
+<!--
+  ==============================================================================
+  CHEAT SHEET
+  ==============================================================================
+  - pom.xml       -> shared, committed, describes WHAT to build and deploy.
+  - settings.xml  -> local per machine, NEVER committed, describes credentials
+                     and network routing for THIS machine/CI runner.
+  - Matching is by <id>. A pom.xml repository with id "mulesoft-releases" only
+    picks up credentials from a settings.xml <server> with the exact same id.
+  - In CI, this file is usually generated from secrets at pipeline start
+    (e.g. a setup step writes ~/.m2/settings.xml from GitHub Actions /
+    Jenkins credentials) rather than kept as a static file anywhere.
+  - Prefer environment-variable interpolation (${env.X}) inside this file over
+    pasting literal secrets, so the same settings.xml template is safe to
+    share across a team even though each person's shell env differs.
+-->

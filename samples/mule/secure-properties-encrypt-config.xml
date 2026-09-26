@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  secure-properties-encrypt-config.xml  (fully annotated)
+  ============================================================================
+  WHAT:   Two versions of the <secure-properties:config> element from
+          globalConfiguration.xml, showing the useRandomIVs setting that MUST
+          match whatever tool generated the encrypted values in your
+          *-secure.yaml file.
+  READ ALONGSIDE: concepts/20-cloudhub2-maven-deploy-troubleshooting.md §4
+                  concepts/13-properties-secrets.md
+
+  THE RULE (per MuleSoft's Secure Configuration Properties reference):
+    useRandomIVs="true"  -> runtime expects: IV (one cipher block) PREPENDED
+                            to the ciphertext for EVERY value; it strips those
+                            leading bytes before decrypting.
+    useRandomIVs="false" -> the default. No prepended IV. The runtime derives
+                            a FIXED IV from the encryption key itself and
+                            applies it to the whole value as-is.
+
+  These are NOT interchangeable at read time. Whichever tool ENCRYPTED the
+  value decides which of the two byte layouts you have; the config below must
+  match that tool, not the other way around.
+  ============================================================================
+-->
+
+<!-- ============================================================================
+     OPTION A - matches MuleSoft's HOSTED Secure Properties web tool
+     (secure-properties-api-ch.<region>.cloudhub.io) and Anypoint Studio's
+     "Encrypt Value" action IF you left random IVs off.
+     This is the DEFAULT and the one to use unless you have a specific reason
+     to want per-value random IVs.
+     ============================================================================ -->
+<secure-properties:config
+    name="Secure_Properties_Config"
+    file="${mule.env}-secure.yaml"
+    key="${encryption.key}">
+  <secure-properties:encrypt algorithm="Blowfish" useRandomIVs="false"/>
+</secure-properties:config>
+
+<!-- ============================================================================
+     OPTION B - random IV per value (better practice against key reuse across
+     many encrypted values, since a fixed key-derived IV is a known weakness
+     if the same key ever encrypts more than one value).
+
+     REQUIRES ciphertext generated with a tool that ACTUALLY PREPENDS an IV:
+       - Anypoint Studio's built-in "Encrypt Value" action, OR
+       - secure-properties-tool.jar invoked with its random-IV option
+
+     Using ciphertext from the hosted web tool with useRandomIVs="true" here
+     WILL FAIL: the runtime treats the ciphertext's first block as a random
+     IV, strips it, and corrupts every block after it. Depending on what the
+     decrypted (corrupted) value feeds into, this can surface as almost
+     ANY downstream error, not just a secure-properties one - e.g. a PKCS12
+     keystore load failing with:
+       java.security.UnrecoverableKeyException: failed to decrypt safe
+       contents entry: javax.crypto.BadPaddingException: Given final block
+       not properly padded.
+     even though the key, algorithm, and real plaintext are all correct.
+     ============================================================================ -->
+<secure-properties:config
+    name="Secure_Properties_Config"
+    file="${mule.env}-secure.yaml"
+    key="${encryption.key}">
+  <secure-properties:encrypt algorithm="Blowfish" useRandomIVs="true"/>
+</secure-properties:config>
+
+<!-- ============================================================================
+     SEPARATE FAILURE MODE - not a decryption bug at all.
+     Maven does NOT error on an unresolved ${env.X} - it silently becomes
+     empty. If ${encryption.key} above never resolves (wrong shell scope for
+     the env var, or `mvn` invoked without `-s settings.xml`), the build and
+     Exchange publish both succeed, and the failure only appears at RUNTIME as:
+       PropertyNotFoundException: Couldn't find configuration property value
+       for key ${encryption.key}
+     followed, on CloudHub, by a deploy-validation timeout (the app keeps
+     crash-looping on every restart attempt).
+
+     Verify BEFORE deploying, not after a 10-minute timeout:
+       mvn help:evaluate -Dexpression=env.MULE_ENCRYPTION_KEY -q -DforceStdout
+       mvn help:evaluate -Dexpression=encryption.key -P<your-profiles> \
+           -s settings.xml -q -DforceStdout
+     Both must print the real key value - not blank, not the literal string
+     "${encryption.key}".
+     ============================================================================ -->

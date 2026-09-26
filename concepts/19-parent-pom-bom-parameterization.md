@@ -21,11 +21,11 @@ flowchart TB
 
 Everything Maven knows about the project sits in one file: coordinates, packaging (`jar` / `pom` / `mule-application`), dependencies and the repositories they come from, build configuration and plugin management. Three packagings matter here:
 
-| Packaging            | Produces               | Used by                    |
-| -------------------- | ---------------------- | -------------------------- |
-| `mule-application` | deployable app         | `check-in-papi`          |
+| Packaging          | Produces              | Used by                    |
+| ------------------ | --------------------- | -------------------------- |
+| `mule-application` | deployable app        | `check-in-papi`            |
 | `pom`              | nothing — config only | the parent POM and the BOM |
-| `jar`              | plain library          | shared Java utils          |
+| `jar`              | plain library         | shared Java utils          |
 
 Every `pom.xml` implicitly inherits the **Super POM** (see [18](18-maven-build.md)). `mvn help:effective-pom` is how you answer "where did this value actually come from?" once a parent and a BOM are both in play.
 
@@ -33,7 +33,7 @@ Anything per-machine or secret is externalised to `~/.m2/settings.xml`, never th
 
 ## 2 · Identifying configuration redundancy
 
-Externalising Mule config into `config-${mule.env}.yaml` ([13](13-properties-secrets.md)) is the first step. It does **not** remove the second kind of duplication — values that a *dependency* and the *runtime* both need.
+Externalising Mule config into `config-${mule.env}.yaml` ([13](13-properties-secrets.md)) is the first step. It does **not** remove the second kind of duplication — values that a _dependency_ and the _runtime_ both need.
 
 `pom.xml` needs the spec coordinates to pull the RAML from Exchange:
 
@@ -45,7 +45,7 @@ Externalising Mule config into `config-${mule.env}.yaml` ([13](13-properties-sec
   <classifier>raml</classifier>
   <type>zip</type>
 </dependency>
-````
+```
 
 `config-dev.yaml` needs the same three values at runtime:
 
@@ -172,6 +172,38 @@ Upgrading `mule-http-connector` across all three APIs becomes: bump one version 
 
 Sample: [`samples/maven/bom-pom.xml`](../samples/maven/bom-pom.xml).
 
+### ⚠ Two different things are both called "BOM" here
+
+`anyairline-mule-bom` above is a BOM **you author** for your own org's connector versions. That is a different artifact from the BOM **MuleSoft itself publishes** to pin the Mule _runtime's own_ module/library versions — both are legitimate, and a real project usually imports both (MuleSoft's runtime BOM, plus your own org BOM for connector/library pins on top of it).
+
+Verified, currently-published MuleSoft runtime BOM artifacts (`groupId org.mule` unless noted):
+
+| Artifact ID                                                    | Scope                                                                                                          |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `mule-javaee-runtime-bom`                                      | Enterprise apps using EE-only modules/connectors — the one referenced in MuleSoft's own Java 17 migration docs |
+| `mule-mulesoft-runtime-bom`                                    | MuleSoft-supported (non-EE-only) runtime modules                                                               |
+| `mule-test-dependencies-bom` (`com.mulesoft.mule.runtime.bom`) | MUnit/test-scope dependencies                                                                                  |
+| `mule-runtime-api-bom` (`org.mule.distributions`)              | Pins versions of the Mule Runtime**APIs** a custom connector or embedding project compiles against             |
+
+```xml
+<properties>
+  <app.runtime>4.9.9</app.runtime>
+</properties>
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>org.mule</groupId>
+      <artifactId>mule-javaee-runtime-bom</artifactId>
+      <version>${app.runtime}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+```
+
+> **Correction worth flagging:** some internal notes/write-ups float a `mule-core-bom` artifact as part of this set. It doesn't resolve against Maven Central or MuleSoft's repository under that name — the closest real equivalents are `mule-runtime-api-bom` and `mule-runtime-impl-bom` (both `org.mule.distributions`), which are for embedding/compiling against the runtime itself, not for a normal Mule application's `pom.xml`. A standard `mule-application` project only needs the app-facing BOM (`mule-javaee-runtime-bom` or `mule-mulesoft-runtime-bom`) plus its own org BOM — don't add the distribution-level BOMs unless actually embedding the runtime.
+
 ## 6 · Order of work
 
 1. Extract Mule config values → `config-${mule.env}.yaml` + `secure-${mule.env}.yaml` ([13](13-properties-secrets.md)).
@@ -192,12 +224,12 @@ Do them in that order: steps 3 and 4 are much easier once nothing app-specific i
 
 ## Common failures
 
-| Symptom                                               | Cause                                                                 |
-| ----------------------------------------------------- | --------------------------------------------------------------------- |
-| `${secure::db.password}` is empty in `target/classes` | Filtering ran with default `${}` delimiters                           |
-| Studio shows the literal `@api.version@`              | Studio runs unfiltered `src/main/`; run `mvn process-resources`       |
-| Child build can't find the parent                     | Parent not `mvn install`ed / not published to Exchange                |
-| `version is required` on a BOM-managed dependency     | BOM imported outside `<dependencyManagement>`, or wrong `<type>pom</type>` |
-| 401 from the EE repo                                  | No `<server>` in `settings.xml` with a matching `<id>`                |
+| Symptom                                               | Cause                                                                     |
+| ----------------------------------------------------- | ------------------------------------------------------------------------- | --- |
+| `${secure::db.password}` is empty in `target/classes` | Filtering ran with default `${}` delimiters                               |     |
+| Studio shows the literal`@api.version@`               | Studio runs unfiltered`src/main/`; run `mvn process-resources`            |
+| Child build can't find the parent                     | Parent not`mvn install`ed / not published to Exchange                     |
+| `version is required` on a BOM-managed dependency     | BOM imported outside`<dependencyManagement>`, or wrong `<type>pom</type>` |
+| 401 from the EE repo                                  | No`<server>` in `settings.xml` with a matching `<id>`                     |
 
 **Do it →** [Lab 15](../labs/lab-15-parent-pom-bom.md)

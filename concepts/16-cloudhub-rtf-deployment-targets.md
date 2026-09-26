@@ -1,16 +1,16 @@
-# 16 · CloudHub 1.0 vs 2.0 vs RTF: Deployment & Networking *(added)*
+# 16 · CloudHub 1.0 vs 2.0 vs RTF: Deployment & Networking _(added)_
 
 **Goal:** know what changes about TLS termination, networking, and "where is my VPC" at each deployment target.
 
 ## The three targets
 
-| | CloudHub 1.0 | CloudHub 2.0 | RTF (Runtime Fabric) |
-|---|---|---|---|
-| What it is | MuleSoft-hosted multi-tenant PaaS | MuleSoft-hosted, container/Kubernetes-based | Your own Kubernetes cluster (your cloud/on-prem), orchestrated by Anypoint |
-| Who manages the infra | MuleSoft | MuleSoft | You |
-| Deploy unit | Worker | Replica | Pod |
-| Network isolation | Shared by default; **Anypoint VPC** is a paid add-on | **Private Space** built in | Your own VPC, entirely |
-| TLS termination | Shared LB (MuleSoft cert) or DLB (your cert) | Private Space load-balancing layer | Your choice: cloud LB, Ingress Controller, or the app itself |
+|                       | CloudHub 1.0                                         | CloudHub 2.0                                | RTF (Runtime Fabric)                                                       |
+| --------------------- | ---------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
+| What it is            | MuleSoft-hosted multi-tenant PaaS                    | MuleSoft-hosted, container/Kubernetes-based | Your own Kubernetes cluster (your cloud/on-prem), orchestrated by Anypoint |
+| Who manages the infra | MuleSoft                                             | MuleSoft                                    | You                                                                        |
+| Deploy unit           | Worker                                               | Replica                                     | Pod                                                                        |
+| Network isolation     | Shared by default; **Anypoint VPC** is a paid add-on | **Private Space** built in                  | Your own VPC, entirely                                                     |
+| TLS termination       | Shared LB (MuleSoft cert) or DLB (your cert)         | Private Space load-balancing layer          | Your choice: cloud LB, Ingress Controller, or the app itself               |
 
 ```mermaid
 flowchart TB
@@ -61,6 +61,8 @@ flowchart LR
 - **Static IPs** (inbound/outbound) are a Private Space feature — solves CH1's rotating-IP allowlisting problem.
 - Upload your CA-signed cert at the Private Space networking layer for custom-domain TLS termination.
 
+Maven-deploying to CloudHub 2.0 (`cloudhub2Deployment`) has its own set of sharp edges — region naming, `businessGroupId` vs `businessGroup`, Connected App scopes, Last-Mile Security — covered separately in [20 CloudHub 2.0 Maven deploy: field notes](20-cloudhub2-maven-deploy-troubleshooting.md), with a full annotated config at [`samples/maven/pom-cloudhub2-deploy-snippet.xml`](../samples/maven/pom-cloudhub2-deploy-snippet.xml).
+
 ## RTF (Runtime Fabric)
 
 ```mermaid
@@ -81,6 +83,7 @@ flowchart TB
 This is the only target where **you** provision the VPC, the Kubernetes nodes, and the Ingress Controller. The only MuleSoft-managed piece is the small **control-plane agent** on your cluster that reports health and receives deployment instructions from Anypoint.
 
 **TLS termination — your choice:**
+
 - At the **cloud LB** (e.g. AWS NLB + ACM cert) — internal traffic to the Ingress Controller can stay plain HTTP inside your VPC.
 - At the **Ingress Controller** — cert/key stored as a Kubernetes `Secret`, referenced by the Ingress resource.
 - At the **app itself** — same `tls:context` config as [09 TLS](09-tls-certificates.md), for end-to-end encryption.
@@ -94,34 +97,34 @@ metadata:
     kubernetes.io/ingress.class: "nginx"
 spec:
   tls:
-  - hosts:
-    - checkin.anyairline.com
-    secretName: checkin-tls-secret
+    - hosts:
+        - checkin.anyairline.com
+      secretName: checkin-tls-secret
   rules:
-  - host: checkin.anyairline.com
-    http:
-      paths:
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: check-in-api-svc
-            port:
-              number: 8082
+    - host: checkin.anyairline.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: check-in-api-svc
+                port:
+                  number: 8082
 ```
 
 `checkin-tls-secret` plays the same role as your local `.p12` keystore — just stored as a Kubernetes Secret instead of a file.
 
 ## Networking glossary
 
-| Term | Meaning |
-|---|---|
-| VPC | Isolated network segment; add-on in CH1, built into CH2's Private Space, literally your own in RTF |
-| Load Balancer | Distributes/routes incoming traffic; often also terminates TLS |
-| Ingress Controller | Kubernetes' internal traffic router to Pods, by host/path — the RTF equivalent of "the LB" |
-| Worker / Replica / Pod | The running app instance, at each platform's layer (CH1 / CH2 / RTF) |
-| Private Space | CH2's built-in network isolation boundary |
-| Static IP | Fixed inbound/outbound IP — needed for reliable partner IP-allowlisting |
+| Term                   | Meaning                                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| VPC                    | Isolated network segment; add-on in CH1, built into CH2's Private Space, literally your own in RTF |
+| Load Balancer          | Distributes/routes incoming traffic; often also terminates TLS                                     |
+| Ingress Controller     | Kubernetes' internal traffic router to Pods, by host/path — the RTF equivalent of "the LB"         |
+| Worker / Replica / Pod | The running app instance, at each platform's layer (CH1 / CH2 / RTF)                               |
+| Private Space          | CH2's built-in network isolation boundary                                                          |
+| Static IP              | Fixed inbound/outbound IP — needed for reliable partner IP-allowlisting                            |
 
 **Do it →** [Lab 10](../labs/lab-10-cloudhub1-custom-domain.md) · [Lab 11](../labs/lab-11-cloudhub2-private-space.md) · [Lab 12](../labs/lab-12-rtf-ingress-tls.md)
 **← Back** [08 VPC & On-Prem](08-vpc-onprem-targets.md) · [09 TLS](09-tls-certificates.md) · [15 Deploy & Operate](15-deploy-operate.md)

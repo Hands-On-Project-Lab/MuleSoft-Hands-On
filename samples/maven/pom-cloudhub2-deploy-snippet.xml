@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  pom-cloudhub2-deploy-snippet.xml  (fully annotated)
+  ============================================================================
+  WHAT:   mule-maven-plugin config that PACKAGES check-in-papi-impl and DEPLOYS
+          it to CloudHub 2.0 (Shared Space or Private Space) - NOT CloudHub 1.0.
+          Sibling of samples/maven/pom-cloudhub-deploy-snippet.xml, which covers
+          the classic <cloudHubDeployment> element instead.
+  WHERE:  Merge into <build><plugins> of the reference pom. Only ONE deployment
+          element (<cloudHubDeployment> / <cloudhub2Deployment> /
+          <runtimeFabricDeployment> / <armDeployment>) per <configuration>.
+  READ ALONGSIDE: concepts/20-cloudhub2-maven-deploy-troubleshooting.md - every
+          numbered comment below (§1..§6) maps to a numbered section there.
+  HOW:    mvn clean deploy -DmuleDeploy -Pch2,dev,anypoint -s settings.xml
+  ============================================================================
+-->
+<plugin>
+  <groupId>org.mule.tools.maven</groupId>
+  <artifactId>mule-maven-plugin</artifactId>
+  <version>${mule.maven.plugin.version}</version>
+  <extensions>true</extensions>
+
+  <configuration>
+    <deploymentTimeout>600000</deploymentTimeout>
+    <skipDeploymentVerification>false</skipDeploymentVerification>
+
+    <cloudhub2Deployment>
+
+      <!-- Anypoint control plane URL - see samples/maven/pom-cloudhub-deploy-snippet.xml
+           for the US/EU distinction. -->
+      <uri>${ap.uri}</uri>
+
+      <!-- Fixed value for CloudHub 2.0. Not a placeholder - leave as literal "MC". -->
+      <provider>MC</provider>
+
+      <!-- §2: businessGroupId vs businessGroup.
+           - <businessGroupId> takes the RAW ID (org UUID), as below.
+           - <businessGroup> instead expects a "Parent\Sub\Org" PATH STRING.
+           Putting an ID into <businessGroup> is schema-valid but resolves to
+           nothing - the plugin then fails with the misleading
+           "Cannot get the environment, the business group is not valid",
+           which is actually a Connected App SCOPE problem 9 times out of 10
+           (see §2 below), not a wrong ID. Check scopes before re-checking this
+           value. -->
+      <businessGroupId>${ap.business.group.id}</businessGroupId>
+
+      <!-- Must match a REAL environment name in Runtime Manager, case-sensitive. -->
+      <environment>${deploy.environment}</environment>
+
+      <!-- §3: REGION - must be the Shared Space name shown on Runtime Manager's
+           own "Deploy Application" screen for THIS org, not assumed from a
+           tutorial. A trial org is typically pinned to exactly one region;
+           guessing the wrong one produces a 400 "Deployment target ... is not
+           in the configured default region", not a 404. -->
+      <target>${ch2.region}</target>              <!-- e.g. Cloudhub-US-East-2 -->
+
+      <!-- §2: Connected App credentials, explicit (preferred over <server> when
+           the settings.xml server entry uses Exchange-facade-style creds -
+           ~~~Client~~~ / id~?~secret - which are a DIFFERENT format from plain
+           Anypoint Platform client credentials this element expects). -->
+      <connectedAppClientId>${ap.deploy.client_id}</connectedAppClientId>
+      <connectedAppClientSecret>${ap.deploy.client_secret}</connectedAppClientSecret>
+      <connectedAppGrantType>client_credentials</connectedAppGrantType>
+
+      <!-- §5: Last-Mile Security. Only set true if the app's OWN listener keeps
+           an HTTPS/tlsContext (see concepts/09-tls-certificates.md) and you
+           need TLS unterminated all the way to the worker on a shared domain.
+           Leave false/omitted for the normal case: plain HTTP listener on
+           ${http.port}, CloudHub's own front-door LB terminates public TLS. -->
+      <deploymentSettings>
+        <http>
+          <inbound>
+            <lastMileSecurity>false</lastMileSecurity>
+          </inbound>
+        </http>
+        <!-- Optional resource sizing - CH2 uses vCores, not CH1 Worker Types. -->
+        <resources>
+          <cpu><reserved>500m</reserved></cpu>
+          <memory><reserved>700Mi</reserved></memory>
+        </resources>
+      </deploymentSettings>
+
+      <replicas>1</replicas>
+
+      <properties>
+        <mule.env>${deploy.environment}</mule.env>
+      </properties>
+
+      <!-- §4: this is ONLY the deployment property carrying the key - it does
+           NOT by itself fix a useRandomIVs mismatch. See
+           samples/mule/secure-properties-encrypt-config.xml for that. -->
+      <secureProperties>
+        <encryption.key>${env.MULE_ENCRYPTION_KEY}</encryption.key>
+      </secureProperties>
+
+    </cloudhub2Deployment>
+  </configuration>
+</plugin>
+
+<!--
+  ============================================================================
+  MINIMUM CONNECTED APP SCOPES for the client_credentials pair above
+  (§2 - Access Management > Connected Apps > your app > scopes).
+  Grant every Runtime Manager scope for EVERY environment the app targets -
+  a scope present on Prod/Sandbox but missing on Dev reproduces the same
+  class of error for Dev deploys only.
+  ============================================================================
+    Organization/Environment : View Organization, View Environment
+    Runtime Manager          : Create Applications, Read Applications,
+                                Manage Applications (or the granular
+                                Create/Read/Delete/Download/Restart set)
+    Exchange                 : Exchange Viewer
+                                (+ Exchange Contributor if this pipeline also
+                                 publishes the RAML/OAS spec asset)
+
+  ============================================================================
+  §1 - EXCHANGE GAV: the spec asset published from Design Center and the
+  application asset built by THIS pom must use DIFFERENT artifactIds under
+  the same groupId (org ID), e.g.:
+    check-in-papi        <- rest-api asset (Design Center)
+    check-in-papi-impl   <- mule-application asset (this pom's <artifactId>)
+  Reusing one artifactId for both fails Exchange publication with
+  "Error while trying to set type: app. Expected type is: rest-api."
+
+  ============================================================================
+  §3 - THE GENERIC 404. If deploy fails with:
+    "404 ... no asset matching given parameters"
+  check IN THIS ORDER:
+    1. <target> region matches Runtime Manager's Deploy screen (400 if not)
+    2. this exact groupId:artifactId:version was never deployed-and-deleted
+       before (Exchange permanently locks a deleted GAV; bump <version>)
+    3. the app name already exists but was created by a manual UI jar upload
+       rather than by Maven (delete it in Runtime Manager, let Maven create
+       it fresh - Maven's deploy goal calls a different API when an app name
+       already exists)
+
+  Verify before trusting any of the optional elements above against the
+  current mule-maven-plugin docs - the deploymentSettings schema in
+  particular has changed across plugin major versions.
+-->

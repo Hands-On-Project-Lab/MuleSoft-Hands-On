@@ -20,6 +20,8 @@ src/main/resources/
 `mule.env` = `dev`/`test`/`prod`, set in Studio run config or in Runtime Manager properties.
 `mule.key` = encryption key, passed **at runtime only**, never committed.
 
+`useRandomIVs` is left at its default (`false`) above on purpose — whichever tool generated the ciphertext in `secure-*.yaml` must use the same setting, or decryption silently corrupts the value (see [20 §4](20-cloudhub2-maven-deploy-troubleshooting.md#4--secure-propertiesencrypt-userandomivs--the-tool-must-match-the-runtime-setting)). Both settings side by side, with the reasoning: [`samples/mule/secure-properties-encrypt-config.xml`](../samples/mule/secure-properties-encrypt-config.xml).
+
 > Externalising to a property file removes hardcoding, but not _duplication_ — values a Maven dependency and the runtime both need (the API spec's groupId/artifactId/version) still appear twice. Maven resource filtering collapses them to one; because Mule and Maven both use `${…}`, filtering must be switched to `@…@` delimiters first. See [19 Parameterization, Parent POM &amp; BOM](19-parent-pom-bom-parameterization.md).
 
 ## Using them
