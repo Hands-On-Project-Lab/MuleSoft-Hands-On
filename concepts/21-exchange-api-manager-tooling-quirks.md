@@ -26,9 +26,11 @@ Not a MuleSoft issue at all, but it blocks testing on Windows long enough to be 
 ```cmd
 curl -X PUT "https://<host>/api/v1/tickets/PNR12345/checkin" -H "Content-Type: application/json" -d "{\"PNR\": \"PNR12345\"}" -v
 ```
+
 ```cmd
 curl -X PUT "https://<host>/api/v1/tickets/PNR12345/checkin" -H "Content-Type: application/json" -d @body.json -v
 ```
+
 PowerShell has its own quoting rules again (different from both bash and `cmd.exe`) — if scripting CI locally, pick one shell and stay in it rather than mixing snippets from different sources.
 
 **Related:** [20 CloudHub 2.0 Maven deploy: field notes](20-cloudhub2-maven-deploy-troubleshooting.md)
